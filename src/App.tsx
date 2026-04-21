@@ -128,7 +128,7 @@ export default function App() {
     setSelectedTaskId(null);
   }
 
-  const showSidebar = view === 'explore' || view === 'calendar';
+  const showSidebar = view === 'explore';
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100">

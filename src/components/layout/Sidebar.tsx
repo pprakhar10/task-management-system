@@ -48,7 +48,7 @@ export function Sidebar({
                     onClick={() => {
                       onToggleCategory(category.id);
                     }}
-                    className="flex items-center gap-2 flex-1 min-h-[44px] px-3 py-2 rounded-lg text-sm font-semibold transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                    className="flex items-center gap-2 flex-1 min-h-[44px] px-3 py-2 rounded-lg text-sm font-semibold transition-colors text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 overflow-hidden"
                     aria-expanded={isExpanded}
                   >
                     <svg
@@ -60,7 +60,7 @@ export function Sidebar({
                     >
                       <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                     </svg>
-                    <span className={isCategorySelected ? 'text-indigo-700 dark:text-indigo-300' : ''}>
+                    <span className={`truncate ${isCategorySelected ? 'text-indigo-700 dark:text-indigo-300' : ''}`} title={category.name}>
                       {category.name}
                     </span>
                   </button>

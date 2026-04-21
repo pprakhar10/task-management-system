@@ -14,7 +14,7 @@ interface Props {
 const SORT_OPTIONS: { value: SortBy; label: string }[] = [
   { value: 'dueDate', label: 'Due Date' },
   { value: 'flag', label: 'Priority' },
-  { value: 'status', label: 'Status' },
+  { value: 'status', label: 'Current' },
 ];
 
 export function ExploreView({
