@@ -5,6 +5,7 @@ interface Props {
   onViewChange: (view: AppView) => void;
   theme: Theme;
   onThemeToggle: () => void;
+  onCreateTask: () => void;
 }
 
 const NAV_ITEMS: { view: AppView; label: string }[] = [
@@ -13,7 +14,7 @@ const NAV_ITEMS: { view: AppView; label: string }[] = [
   { view: 'statistics', label: 'Statistics' },
 ];
 
-export function TopNav({ view, onViewChange, theme, onThemeToggle }: Props) {
+export function TopNav({ view, onViewChange, theme, onThemeToggle, onCreateTask }: Props) {
   const isCalendar = view === 'calendar';
 
   return (
@@ -64,7 +65,10 @@ export function TopNav({ view, onViewChange, theme, onThemeToggle }: Props) {
         </div>
 
         {/* Create Task */}
-        <button className="min-h-[44px] px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5">
+        <button
+          onClick={onCreateTask}
+          className="min-h-[44px] px-4 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5"
+        >
           <span className="text-lg leading-none">+</span>
           <span className="hidden sm:inline">Create Task</span>
         </button>

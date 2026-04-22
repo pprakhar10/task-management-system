@@ -455,3 +455,87 @@ describe('shouldPromptBackup', () => {
     vi.useRealTimers();
   });
 });
+
+// ─── Task status transitions ──────────────────────────────────────────────────
+
+describe('Task status transitions', () => {
+  async function seedTask() {
+    const cat = await createCategory('Work');
+    const proj = await createProject(cat.id, 'Alpha');
+    return createTask({
+      projectId: proj.id,
+      workType: 'deep',
+      title: 'Do something',
+      dueDate: '2026-06-01',
+      flag: null,
+      status: 'normal',
+      completed: false,
+      completedAt: null,
+    });
+  }
+
+  it('starts with status normal', async () => {
+    const task = await seedTask();
+    expect(task.status).toBe('normal');
+  });
+
+  it('transitions normal → currently_working', async () => {
+    const task = await seedTask();
+    await updateTask(task.id, { status: 'currently_working' });
+    const updated = await getTaskById(task.id);
+    expect(updated?.status).toBe('currently_working');
+  });
+
+  it('transitions currently_working → morning_meeting', async () => {
+    const task = await seedTask();
+    await updateTask(task.id, { status: 'currently_working' });
+    await updateTask(task.id, { status: 'morning_meeting' });
+    const updated = await getTaskById(task.id);
+    expect(updated?.status).toBe('morning_meeting');
+  });
+
+  it('transitions morning_meeting → normal', async () => {
+    const task = await seedTask();
+    await updateTask(task.id, { status: 'morning_meeting' });
+    await updateTask(task.id, { status: 'normal' });
+    const updated = await getTaskById(task.id);
+    expect(updated?.status).toBe('normal');
+  });
+
+  it('completeTask resets status to normal regardless of prior status', async () => {
+    const task = await seedTask();
+    await updateTask(task.id, { status: 'currently_working' });
+    await completeTask(task.id);
+    const completed = await getTaskById(task.id);
+    expect(completed?.completed).toBe(true);
+    expect(completed?.status).toBe('normal');
+    expect(completed?.completedAt).toBeGreaterThan(0);
+  });
+
+  it('completing a morning_meeting task also resets status to normal', async () => {
+    const task = await seedTask();
+    await updateTask(task.id, { status: 'morning_meeting' });
+    await completeTask(task.id);
+    const completed = await getTaskById(task.id);
+    expect(completed?.completed).toBe(true);
+    expect(completed?.status).toBe('normal');
+  });
+
+  it('can restore a completed task to active with status normal', async () => {
+    const task = await seedTask();
+    await completeTask(task.id);
+    await updateTask(task.id, { completed: false, completedAt: null });
+    const restored = await getTaskById(task.id);
+    expect(restored?.completed).toBe(false);
+    expect(restored?.completedAt).toBeNull();
+    expect(restored?.status).toBe('normal');
+  });
+
+  it('flag can be set independently of status', async () => {
+    const task = await seedTask();
+    await updateTask(task.id, { status: 'currently_working', flag: 'urgent' });
+    const updated = await getTaskById(task.id);
+    expect(updated?.status).toBe('currently_working');
+    expect(updated?.flag).toBe('urgent');
+  });
+});

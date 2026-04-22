@@ -101,7 +101,7 @@ src/
 
 ### Build Phases
 
-**Current phase: 4 — Task CRUD (in progress)**
+**Current phase: 5 — Top nav special views (next)**
 **Plan file:** `C:\Users\pprak\.claude\plans\staged-shimmying-wadler.md`
 
 | # | Phase | Status |
@@ -109,7 +109,7 @@ src/
 | 1 | Static app shell (mock data, all UI components) | ✅ Complete |
 | 2 | Data layer — Dexie.js schema, CRUD, tests, backup/restore | ✅ Complete |
 | 3 | Wire explore view to real DB | ✅ Complete |
-| 4 | Task CRUD — create/edit/delete at all levels | 🔄 In Progress |
+| 4 | Task CRUD — create/edit/delete at all levels | ✅ Complete |
 | 5 | Top nav special views — Currently Working, Morning Meeting, Search | ⬜ |
 | 6 | Calendar UI (static) | ⬜ |
 | 7 | Wire calendar to DB | ⬜ |
@@ -126,16 +126,20 @@ src/
 - [x] Quick-complete task — circle button on card, no panel needed
 - [x] Restore completed task — "Restore to active" button in completed archive
 - [x] Completed archive section in Explore view (collapsible, sorted newest-first)
+- [x] Edit / delete category from sidebar (dots menu → rename / delete with inline confirm)
+- [x] Edit / delete project from sidebar (dots menu → rename / delete with inline confirm)
+- [x] Move task to "Currently Working" / "Morning Meeting" — tap-to-cycle status badge on card + panel
+
+**Done (local, not yet pushed):**
+- [x] "Create New Task" button → opens side panel form (title, due date, work type, flag, category, project)
+- [x] Side panel edit mode — prefills form, saves on submit
+- [x] Delete task with inline confirmation in side panel
+- [x] Add subtask via "+" input in side panel (title only; due date optional, not exposed in UI)
+- [x] Edit subtask inline in side panel (hover → pencil icon → edit in place)
+- [x] Delete subtask in side panel (hover → trash icon, immediate)
+- [x] Tests for task status transitions (8 new tests, 62 total)
 
 **Remaining:**
-- [ ] "Create New Task" button → side panel form (title, due date, work type, flag, category, project)
-- [ ] Side panel edit mode — edit any task field inline
-- [ ] Delete task with confirmation dialog
-- [ ] Add subtask via "+" in task card / side panel
-- [ ] Edit / delete subtask from side panel
-- [ ] Edit / delete category from sidebar
-- [ ] Edit / delete project from sidebar
-- [ ] Move task to "Currently Working" or "Morning Meeting" from side panel
-- [ ] Tests for task status transitions
+- [ ] Touch-friendly side panel: full-height on narrow viewports, scrollable (deferred to Phase 11)
 
 **Update the current phase and table at the end of every session.**

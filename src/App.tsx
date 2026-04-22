@@ -3,9 +3,15 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import type { AppView, Category, Project, SortBy, TaskFlag, TaskStatus, Theme } from './types';
 import { MOCK_CATEGORIES, MOCK_PROJECTS, MOCK_SUBTASKS, MOCK_TASKS } from './data/mockData';
 import { db } from './db/database';
-import { completeTask, updateTask, updateSubtask, updateSettings, createCategory, createProject, updateCategory, deleteCategory, updateProject, deleteProject } from './db/crud';
+import {
+  completeTask, createTask, deleteTask, updateTask,
+  createSubtask, updateSubtask, deleteSubtask,
+  updateSettings,
+  createCategory, createProject, updateCategory, deleteCategory, updateProject, deleteProject,
+} from './db/crud';
 import { exportDB, shouldPromptBackup } from './db/backup';
 import { sortTasks } from './utils/tasks';
+import type { PanelMode } from './components/layout/SidePanel';
 import { TopNav } from './components/layout/TopNav';
 import { Sidebar } from './components/layout/Sidebar';
 import { SidePanel } from './components/layout/SidePanel';
@@ -21,6 +27,7 @@ export default function App() {
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [expandedCategories, setExpandedCategories] = useState<Set<number>>(new Set());
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
+  const [sidePanelMode, setSidePanelMode] = useState<PanelMode>('view');
   const [sortBy, setSortBy] = useState<SortBy>('dueDate');
   const [showBackupPrompt, setShowBackupPrompt] = useState(false);
 
@@ -151,7 +158,26 @@ export default function App() {
   const selectedProject = selectedTask ? projectMap.get(selectedTask.projectId) : null;
   const selectedCategory = selectedProject ? categoryMap.get(selectedProject.categoryId) : null;
 
-  // Handlers
+  const isPanelOpen = selectedTaskId !== null || sidePanelMode === 'create';
+
+  // ── Panel helpers ────────────────────────────────────────────────────────────
+
+  function closePanel() {
+    setSelectedTaskId(null);
+    setSidePanelMode('view');
+  }
+
+  function handleOpenCreate() {
+    setSelectedTaskId(null);
+    setSidePanelMode('create');
+  }
+
+  function handleOpenEdit() {
+    setSidePanelMode('edit');
+  }
+
+  // ── Handlers ─────────────────────────────────────────────────────────────────
+
   function handleToggleCategory(categoryId: number) {
     setExpandedCategories(prev => {
       const next = new Set(prev);
@@ -173,7 +199,7 @@ export default function App() {
 
   function handleViewChange(nextView: AppView) {
     setView(nextView);
-    setSelectedTaskId(null);
+    closePanel();
   }
 
   async function handleSubtaskToggle(subtaskId: number) {
@@ -187,7 +213,7 @@ export default function App() {
 
   async function handleMarkComplete(taskId: number) {
     await completeTask(taskId);
-    if (selectedTaskId === taskId) setSelectedTaskId(null);
+    if (selectedTaskId === taskId) closePanel();
   }
 
   async function handleRestoreTask(taskId: number) {
@@ -262,6 +288,36 @@ export default function App() {
     setShowBackupPrompt(false);
   }
 
+  async function handleCreateTask(input: Parameters<typeof createTask>[0]) {
+    await createTask(input);
+    closePanel();
+  }
+
+  async function handleUpdateTask(
+    taskId: number,
+    changes: Parameters<typeof updateTask>[1],
+  ) {
+    await updateTask(taskId, changes);
+    setSidePanelMode('view');
+  }
+
+  async function handleDeleteTask(taskId: number) {
+    await deleteTask(taskId);
+    closePanel();
+  }
+
+  async function handleAddSubtask(taskId: number, title: string, dueDate: string | null) {
+    await createSubtask({ taskId, title, dueDate, completed: false, completedAt: null });
+  }
+
+  async function handleUpdateSubtask(subtaskId: number, title: string) {
+    await updateSubtask(subtaskId, { title });
+  }
+
+  async function handleDeleteSubtask(subtaskId: number) {
+    await deleteSubtask(subtaskId);
+  }
+
   const showSidebar = view === 'explore';
 
   return (
@@ -271,6 +327,7 @@ export default function App() {
         onViewChange={handleViewChange}
         theme={theme}
         onThemeToggle={handleThemeToggle}
+        onCreateTask={handleOpenCreate}
       />
 
       <div className="flex pt-14 h-full">
@@ -352,16 +409,26 @@ export default function App() {
       </div>
 
       <SidePanel
+        mode={sidePanelMode}
         task={selectedTask}
         subtasks={selectedTaskSubtasks}
         projectName={selectedProject?.name ?? ''}
         categoryName={selectedCategory?.name ?? ''}
-        isOpen={selectedTaskId !== null}
-        onClose={() => setSelectedTaskId(null)}
+        categories={categories}
+        projects={projects}
+        isOpen={isPanelOpen}
+        onClose={closePanel}
         onSubtaskToggle={handleSubtaskToggle}
         onMarkComplete={() => selectedTask && handleMarkComplete(selectedTask.id)}
         onFlagToggle={() => selectedTask && handleFlagToggle(selectedTask.id)}
         onStatusToggle={() => selectedTask && handleStatusToggle(selectedTask.id)}
+        onEdit={handleOpenEdit}
+        onCreateTask={handleCreateTask}
+        onUpdateTask={handleUpdateTask}
+        onDeleteTask={handleDeleteTask}
+        onAddSubtask={handleAddSubtask}
+        onUpdateSubtask={handleUpdateSubtask}
+        onDeleteSubtask={handleDeleteSubtask}
       />
 
       {showBackupPrompt && (
