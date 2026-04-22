@@ -93,31 +93,51 @@ export function TaskCard({ task, subtasks, projectName, onClick, onSubtaskToggle
               {task.title}
             </h3>
           </div>
-          {onFlagToggle ? (
-            <button
-              onClick={e => { e.stopPropagation(); onFlagToggle(task.id); }}
-              className={`shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full transition-colors ${
-                task.flag === 'urgent'
-                  ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/60'
-                  : task.flag === 'important'
-                  ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-900/60'
-                  : 'border border-dashed border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500 hover:border-gray-400 dark:hover:border-gray-500'
-              }`}
-              aria-label="Cycle flag"
-            >
-              {task.flag === 'urgent' ? 'Urgent' : task.flag === 'important' ? 'Important' : 'Flag'}
-            </button>
-          ) : task.flag ? (
-            <span
-              className={`shrink-0 text-xs font-semibold px-2 py-0.5 rounded-full ${
-                task.flag === 'urgent'
-                  ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
-                  : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
-              }`}
-            >
-              {task.flag === 'urgent' ? 'Urgent' : 'Important'}
-            </span>
-          ) : null}
+          {/* Flag + Status stacked on the right */}
+          <div className="shrink-0 flex flex-col items-end gap-1">
+            {onFlagToggle ? (
+              <button
+                onClick={e => { e.stopPropagation(); onFlagToggle(task.id); }}
+                className={`text-xs font-semibold px-2 py-0.5 rounded-full transition-colors ${
+                  task.flag === 'urgent'
+                    ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/60'
+                    : task.flag === 'important'
+                    ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-900/60'
+                    : 'border border-dashed border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500 hover:border-gray-400 dark:hover:border-gray-500'
+                }`}
+                aria-label="Cycle flag"
+              >
+                {task.flag === 'urgent' ? 'Urgent' : task.flag === 'important' ? 'Important' : 'Flag'}
+              </button>
+            ) : task.flag ? (
+              <span
+                className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                  task.flag === 'urgent'
+                    ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
+                    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
+                }`}
+              >
+                {task.flag === 'urgent' ? 'Urgent' : 'Important'}
+              </span>
+            ) : null}
+            {onStatusToggle ? (
+              <button
+                onClick={e => { e.stopPropagation(); onStatusToggle(task.id); }}
+                className={`text-xs px-2 py-0.5 rounded-full font-medium transition-colors ${
+                  task.status !== 'normal'
+                    ? `${STATUS_BADGE[task.status]} hover:opacity-80`
+                    : 'border border-dashed border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500 hover:border-gray-400 dark:hover:border-gray-500'
+                }`}
+                aria-label="Cycle status"
+              >
+                {task.status !== 'normal' ? STATUS_LABEL[task.status] : 'Status'}
+              </button>
+            ) : task.status !== 'normal' ? (
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_BADGE[task.status]}`}>
+                {STATUS_LABEL[task.status]}
+              </span>
+            ) : null}
+          </div>
         </div>
 
         {/* Meta row */}
@@ -134,23 +154,6 @@ export function TaskCard({ task, subtasks, projectName, onClick, onSubtaskToggle
           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${WORK_TYPE_BADGE[task.workType]}`}>
             {WORK_TYPE_LABEL[task.workType]}
           </span>
-          {onStatusToggle ? (
-            <button
-              onClick={e => { e.stopPropagation(); onStatusToggle(task.id); }}
-              className={`text-xs px-2 py-0.5 rounded-full font-medium transition-colors ${
-                task.status !== 'normal'
-                  ? `${STATUS_BADGE[task.status]} hover:opacity-80`
-                  : 'border border-dashed border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500 hover:border-gray-400 dark:hover:border-gray-500'
-              }`}
-              aria-label="Cycle status"
-            >
-              {task.status !== 'normal' ? STATUS_LABEL[task.status] : 'Status'}
-            </button>
-          ) : task.status !== 'normal' ? (
-            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_BADGE[task.status]}`}>
-              {STATUS_LABEL[task.status]}
-            </span>
-          ) : null}
           {projectName && (
             <span className="text-xs text-gray-400 dark:text-gray-500">
               {projectName}
@@ -191,7 +194,10 @@ export function TaskCard({ task, subtasks, projectName, onClick, onSubtaskToggle
               Restore to active
             </button>
           ) : (
-            <button className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors min-h-[44px] px-1">
+            <button
+              onClick={() => onClick(task.id)}
+              className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors min-h-[44px] px-1"
+            >
               <span className="text-base leading-none">+</span>
               Add subtask
             </button>

@@ -310,45 +310,54 @@ export function SidePanel({
                     <label className={LABEL_CLASS}>
                       Category <span className="text-red-500">*</span>
                     </label>
-                    <select
-                      value={formCategoryId ?? ''}
-                      onChange={e =>
-                        handleCategorySelect(e.target.value ? Number(e.target.value) : null)
-                      }
-                      className={INPUT_CLASS}
-                    >
-                      <option value="">Select category...</option>
+                    <div className="flex flex-wrap gap-2">
                       {categories.map(c => (
-                        <option key={c.id} value={c.id}>
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => handleCategorySelect(c.id)}
+                          className={`min-h-[40px] px-3 text-sm font-medium rounded-lg border transition-colors ${
+                            formCategoryId === c.id
+                              ? 'bg-indigo-100 border-indigo-300 text-indigo-700 dark:bg-indigo-900/40 dark:border-indigo-600 dark:text-indigo-300'
+                              : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                          }`}
+                        >
                           {c.name}
-                        </option>
+                        </button>
                       ))}
-                    </select>
+                    </div>
                   </div>
 
                   {/* Project */}
-                  <div>
-                    <label className={LABEL_CLASS}>
-                      Project <span className="text-red-500">*</span>
-                    </label>
-                    <select
-                      value={formProjectId ?? ''}
-                      onChange={e =>
-                        setFormProjectId(e.target.value ? Number(e.target.value) : null)
-                      }
-                      disabled={formCategoryId === null}
-                      className={`${INPUT_CLASS} disabled:opacity-50 disabled:cursor-not-allowed`}
-                    >
-                      <option value="">
-                        {formCategoryId === null ? 'Select a category first' : 'Select project...'}
-                      </option>
-                      {formProjects.map(p => (
-                        <option key={p.id} value={p.id}>
-                          {p.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  {formCategoryId !== null && (
+                    <div>
+                      <label className={LABEL_CLASS}>
+                        Project <span className="text-red-500">*</span>
+                      </label>
+                      {formProjects.length === 0 ? (
+                        <p className="text-xs text-gray-400 dark:text-gray-500 italic">
+                          No projects in this category.
+                        </p>
+                      ) : (
+                        <div className="flex flex-wrap gap-2">
+                          {formProjects.map(p => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => setFormProjectId(p.id)}
+                              className={`min-h-[40px] px-3 text-sm font-medium rounded-lg border transition-colors ${
+                                formProjectId === p.id
+                                  ? 'bg-indigo-100 border-indigo-300 text-indigo-700 dark:bg-indigo-900/40 dark:border-indigo-600 dark:text-indigo-300'
+                                  : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700'
+                              }`}
+                            >
+                              {p.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {formError && (
                     <p className="text-xs text-red-600 dark:text-red-400">{formError}</p>
@@ -448,24 +457,24 @@ export function SidePanel({
                             </button>
                           </div>
                         ) : (
-                          <div key={subtask.id} className="flex items-center group">
+                          <div key={subtask.id} className="flex items-center">
                             <div className="flex-1 min-w-0">
                               <SubtaskItem subtask={subtask} onToggle={onSubtaskToggle} />
                             </div>
-                            <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 pr-1">
+                            <div className="flex items-center gap-0.5 shrink-0 pr-1">
                               <button
                                 onClick={() => {
                                   setEditingSubtaskId(subtask.id);
                                   setEditSubtaskTitle(subtask.title);
                                 }}
-                                className="min-h-[32px] min-w-[32px] flex items-center justify-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                                className="min-h-[36px] min-w-[36px] flex items-center justify-center text-gray-300 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
                                 aria-label="Edit subtask"
                               >
                                 {ICON_PENCIL}
                               </button>
                               <button
                                 onClick={() => onDeleteSubtask(subtask.id)}
-                                className="min-h-[32px] min-w-[32px] flex items-center justify-center text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                                className="min-h-[36px] min-w-[36px] flex items-center justify-center text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
                                 aria-label="Delete subtask"
                               >
                                 {ICON_TRASH}
