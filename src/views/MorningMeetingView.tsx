@@ -10,9 +10,12 @@ interface Props {
   onCompleteTask: (taskId: number) => void;
   onFlagToggle: (taskId: number) => void;
   onStatusToggle: (taskId: number) => void;
+  onAddSubtask: (taskId: number, title: string) => void;
+  onUpdateSubtask: (subtaskId: number, title: string) => void;
+  onDeleteSubtask: (subtaskId: number) => void;
 }
 
-export function MorningMeetingView({ tasks, subtasksByTaskId, projectMap, onTaskClick, onSubtaskToggle, onCompleteTask, onFlagToggle, onStatusToggle }: Props) {
+export function MorningMeetingView({ tasks, subtasksByTaskId, projectMap, onTaskClick, onSubtaskToggle, onCompleteTask, onFlagToggle, onStatusToggle, onAddSubtask, onUpdateSubtask, onDeleteSubtask }: Props) {
   return (
     <div className="flex-1 flex flex-col min-h-0">
       <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
@@ -43,6 +46,9 @@ export function MorningMeetingView({ tasks, subtasksByTaskId, projectMap, onTask
                 onComplete={onCompleteTask}
                 onFlagToggle={onFlagToggle}
                 onStatusToggle={onStatusToggle}
+                onAddSubtask={onAddSubtask}
+                onUpdateSubtask={onUpdateSubtask}
+                onDeleteSubtask={onDeleteSubtask}
               />
             ))}
           </div>

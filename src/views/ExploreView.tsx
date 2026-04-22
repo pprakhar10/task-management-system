@@ -15,6 +15,9 @@ interface Props {
   onRestoreTask: (taskId: number) => void;
   onFlagToggle: (taskId: number) => void;
   onStatusToggle: (taskId: number) => void;
+  onAddSubtask: (taskId: number, title: string) => void;
+  onUpdateSubtask: (subtaskId: number, title: string) => void;
+  onDeleteSubtask: (subtaskId: number) => void;
 }
 
 const SORT_OPTIONS: { value: SortBy; label: string }[] = [
@@ -36,6 +39,9 @@ export function ExploreView({
   onRestoreTask,
   onFlagToggle,
   onStatusToggle,
+  onAddSubtask,
+  onUpdateSubtask,
+  onDeleteSubtask,
 }: Props) {
   const [showCompleted, setShowCompleted] = useState(false);
 
@@ -84,6 +90,9 @@ export function ExploreView({
                 onComplete={onCompleteTask}
                 onFlagToggle={onFlagToggle}
                 onStatusToggle={onStatusToggle}
+                onAddSubtask={onAddSubtask}
+                onUpdateSubtask={onUpdateSubtask}
+                onDeleteSubtask={onDeleteSubtask}
               />
             ))}
           </div>

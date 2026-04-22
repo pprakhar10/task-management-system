@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { Task, Subtask } from '../../types';
 import { SubtaskItem } from './SubtaskItem';
 import { getDueDateStatus } from '../../utils/tasks';
@@ -12,6 +13,9 @@ interface Props {
   onRestore?: (taskId: number) => void;
   onFlagToggle?: (taskId: number) => void;
   onStatusToggle?: (taskId: number) => void;
+  onAddSubtask?: (taskId: number, title: string) => void;
+  onUpdateSubtask?: (subtaskId: number, title: string) => void;
+  onDeleteSubtask?: (subtaskId: number) => void;
 }
 
 function formatDate(dateStr: string): string {
@@ -48,11 +52,46 @@ const STATUS_LABEL: Record<string, string> = {
   morning_meeting: 'Morning Meeting',
 };
 
-export function TaskCard({ task, subtasks, projectName, onClick, onSubtaskToggle, onComplete, onRestore, onFlagToggle, onStatusToggle }: Props) {
+const ICON_CHECK = (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+  </svg>
+);
+
+const ICON_X = (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+  </svg>
+);
+
+const ICON_PENCIL = (
+  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+  </svg>
+);
+
+const ICON_TRASH = (
+  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+  </svg>
+);
+
+const INLINE_INPUT_CLASS =
+  'flex-1 min-w-0 text-sm px-2 py-1 rounded-md border border-indigo-300 dark:border-indigo-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-400';
+
+export function TaskCard({
+  task, subtasks, projectName, onClick, onSubtaskToggle,
+  onComplete, onRestore, onFlagToggle, onStatusToggle,
+  onAddSubtask, onUpdateSubtask, onDeleteSubtask,
+}: Props) {
+  const [addingSubtask, setAddingSubtask] = useState(false);
+  const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
+  const [editingSubtaskId, setEditingSubtaskId] = useState<number | null>(null);
+  const [editSubtaskTitle, setEditSubtaskTitle] = useState('');
+
   const dueDateStatus = getDueDateStatus(task.dueDate, task.completed);
   const isOverdue = dueDateStatus === 'overdue';
   const isDueToday = dueDateStatus === 'due_today';
-
   const completedCount = subtasks.filter(s => s.completed).length;
 
   const borderColorClass = isOverdue
@@ -66,6 +105,24 @@ export function TaskCard({ task, subtasks, projectName, onClick, onSubtaskToggle
     : isDueToday
     ? 'text-amber-600 dark:text-amber-400 font-medium'
     : 'text-gray-500 dark:text-gray-400';
+
+  function handleAddConfirm() {
+    const title = newSubtaskTitle.trim();
+    if (!title || !onAddSubtask) return;
+    onAddSubtask(task.id, title);
+    setNewSubtaskTitle('');
+    setAddingSubtask(false);
+  }
+
+  function handleEditConfirm() {
+    if (editingSubtaskId === null || !onUpdateSubtask) return;
+    const title = editSubtaskTitle.trim();
+    if (title) onUpdateSubtask(editingSubtaskId, title);
+    setEditingSubtaskId(null);
+    setEditSubtaskTitle('');
+  }
+
+  const canEditSubtasks = !!(onAddSubtask && onUpdateSubtask && onDeleteSubtask);
 
   return (
     <div
@@ -110,13 +167,11 @@ export function TaskCard({ task, subtasks, projectName, onClick, onSubtaskToggle
                 {task.flag === 'urgent' ? 'Urgent' : task.flag === 'important' ? 'Important' : 'Flag'}
               </button>
             ) : task.flag ? (
-              <span
-                className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                  task.flag === 'urgent'
-                    ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
-                    : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
-                }`}
-              >
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                task.flag === 'urgent'
+                  ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
+                  : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
+              }`}>
                 {task.flag === 'urgent' ? 'Urgent' : 'Important'}
               </span>
             ) : null}
@@ -155,34 +210,80 @@ export function TaskCard({ task, subtasks, projectName, onClick, onSubtaskToggle
             {WORK_TYPE_LABEL[task.workType]}
           </span>
           {projectName && (
-            <span className="text-xs text-gray-400 dark:text-gray-500">
-              {projectName}
-            </span>
+            <span className="text-xs text-gray-400 dark:text-gray-500">{projectName}</span>
           )}
         </div>
 
         {/* Subtasks */}
-        {subtasks.length > 0 && (
-          <div
-            className="border-t border-gray-100 dark:border-gray-700 pt-2"
-            onClick={e => e.stopPropagation()}
-          >
-            <p className="text-xs text-gray-400 dark:text-gray-500 mb-1 px-1">
-              {completedCount} / {subtasks.length} subtasks
-            </p>
-            <div className="space-y-0">
-              {subtasks.map(subtask => (
-                <SubtaskItem key={subtask.id} subtask={subtask} onToggle={onSubtaskToggle} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Add subtask / Restore */}
         <div
-          className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700"
+          className="border-t border-gray-100 dark:border-gray-700 pt-2"
           onClick={e => e.stopPropagation()}
         >
+          {subtasks.length > 0 && (
+            <>
+              <p className="text-xs text-gray-400 dark:text-gray-500 mb-1 px-1">
+                {completedCount} / {subtasks.length} subtasks
+              </p>
+              <div className="space-y-0 mb-1">
+                {subtasks.map(subtask =>
+                  editingSubtaskId === subtask.id ? (
+                    <div key={subtask.id} className="flex items-center gap-1 px-1 py-1 min-h-[44px]">
+                      <input
+                        autoFocus
+                        value={editSubtaskTitle}
+                        onChange={e => setEditSubtaskTitle(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') handleEditConfirm();
+                          if (e.key === 'Escape') setEditingSubtaskId(null);
+                        }}
+                        className={INLINE_INPUT_CLASS}
+                      />
+                      <button
+                        onClick={handleEditConfirm}
+                        className="min-h-[36px] min-w-[36px] flex items-center justify-center text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-md transition-colors"
+                        aria-label="Save"
+                      >
+                        {ICON_CHECK}
+                      </button>
+                      <button
+                        onClick={() => setEditingSubtaskId(null)}
+                        className="min-h-[36px] min-w-[36px] flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                        aria-label="Cancel"
+                      >
+                        {ICON_X}
+                      </button>
+                    </div>
+                  ) : (
+                    <div key={subtask.id} className="flex items-center">
+                      <div className="flex-1 min-w-0">
+                        <SubtaskItem subtask={subtask} onToggle={onSubtaskToggle} />
+                      </div>
+                      {canEditSubtasks && (
+                        <div className="flex items-center gap-0.5 shrink-0 pr-1">
+                          <button
+                            onClick={() => { setEditingSubtaskId(subtask.id); setEditSubtaskTitle(subtask.title); }}
+                            className="min-h-[36px] min-w-[36px] flex items-center justify-center text-gray-300 dark:text-gray-600 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                            aria-label="Edit subtask"
+                          >
+                            {ICON_PENCIL}
+                          </button>
+                          <button
+                            onClick={() => onDeleteSubtask!(subtask.id)}
+                            className="min-h-[36px] min-w-[36px] flex items-center justify-center text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                            aria-label="Delete subtask"
+                          >
+                            {ICON_TRASH}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                )}
+              </div>
+            </>
+          )}
+
+          {/* Add subtask row */}
           {onRestore ? (
             <button
               onClick={() => onRestore(task.id)}
@@ -193,9 +294,37 @@ export function TaskCard({ task, subtasks, projectName, onClick, onSubtaskToggle
               </svg>
               Restore to active
             </button>
+          ) : addingSubtask ? (
+            <div className="flex items-center gap-1 px-1 mt-1">
+              <input
+                autoFocus
+                value={newSubtaskTitle}
+                onChange={e => setNewSubtaskTitle(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') handleAddConfirm();
+                  if (e.key === 'Escape') { setAddingSubtask(false); setNewSubtaskTitle(''); }
+                }}
+                placeholder="Subtask title"
+                className={INLINE_INPUT_CLASS}
+              />
+              <button
+                onClick={handleAddConfirm}
+                className="min-h-[36px] min-w-[36px] flex items-center justify-center text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-md transition-colors"
+                aria-label="Add subtask"
+              >
+                {ICON_CHECK}
+              </button>
+              <button
+                onClick={() => { setAddingSubtask(false); setNewSubtaskTitle(''); }}
+                className="min-h-[36px] min-w-[36px] flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md transition-colors"
+                aria-label="Cancel"
+              >
+                {ICON_X}
+              </button>
+            </div>
           ) : (
             <button
-              onClick={() => onClick(task.id)}
+              onClick={() => onAddSubtask ? setAddingSubtask(true) : onClick(task.id)}
               className="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors min-h-[44px] px-1"
             >
               <span className="text-base leading-none">+</span>

@@ -136,7 +136,7 @@ export default function App() {
   }, [completedTasks, projects, selectedProjectId, selectedCategoryId]);
 
   const currentlyWorkingTasks = useMemo(
-    () => tasks.filter(t => t.status === 'currently_working'),
+    () => tasks.filter(t => t.status === 'currently_working' || t.status === 'morning_meeting'),
     [tasks],
   );
 
@@ -365,6 +365,9 @@ export default function App() {
               onRestoreTask={handleRestoreTask}
               onFlagToggle={handleFlagToggle}
               onStatusToggle={handleStatusToggle}
+              onAddSubtask={(taskId, title) => handleAddSubtask(taskId, title, null)}
+              onUpdateSubtask={handleUpdateSubtask}
+              onDeleteSubtask={handleDeleteSubtask}
             />
           )}
 
@@ -378,6 +381,9 @@ export default function App() {
               onCompleteTask={handleMarkComplete}
               onFlagToggle={handleFlagToggle}
               onStatusToggle={handleStatusToggle}
+              onAddSubtask={(taskId, title) => handleAddSubtask(taskId, title, null)}
+              onUpdateSubtask={handleUpdateSubtask}
+              onDeleteSubtask={handleDeleteSubtask}
             />
           )}
 
@@ -391,6 +397,9 @@ export default function App() {
               onCompleteTask={handleMarkComplete}
               onFlagToggle={handleFlagToggle}
               onStatusToggle={handleStatusToggle}
+              onAddSubtask={(taskId, title) => handleAddSubtask(taskId, title, null)}
+              onUpdateSubtask={handleUpdateSubtask}
+              onDeleteSubtask={handleDeleteSubtask}
             />
           )}
 
