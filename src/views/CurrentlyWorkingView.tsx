@@ -7,9 +7,12 @@ interface Props {
   projectMap: Map<number, Project>;
   onTaskClick: (taskId: number) => void;
   onSubtaskToggle: (subtaskId: number) => void;
+  onCompleteTask: (taskId: number) => void;
+  onFlagToggle: (taskId: number) => void;
+  onStatusToggle: (taskId: number) => void;
 }
 
-export function CurrentlyWorkingView({ tasks, subtasksByTaskId, projectMap, onTaskClick, onSubtaskToggle }: Props) {
+export function CurrentlyWorkingView({ tasks, subtasksByTaskId, projectMap, onTaskClick, onSubtaskToggle, onCompleteTask, onFlagToggle, onStatusToggle }: Props) {
   return (
     <div className="flex-1 flex flex-col min-h-0">
       <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
@@ -37,6 +40,9 @@ export function CurrentlyWorkingView({ tasks, subtasksByTaskId, projectMap, onTa
                 projectName={projectMap.get(task.projectId)?.name}
                 onClick={onTaskClick}
                 onSubtaskToggle={onSubtaskToggle}
+                onComplete={onCompleteTask}
+                onFlagToggle={onFlagToggle}
+                onStatusToggle={onStatusToggle}
               />
             ))}
           </div>

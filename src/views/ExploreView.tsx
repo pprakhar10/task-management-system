@@ -11,6 +11,10 @@ interface Props {
   onSortChange: (sort: SortBy) => void;
   onTaskClick: (taskId: number) => void;
   onSubtaskToggle: (subtaskId: number) => void;
+  onCompleteTask: (taskId: number) => void;
+  onRestoreTask: (taskId: number) => void;
+  onFlagToggle: (taskId: number) => void;
+  onStatusToggle: (taskId: number) => void;
 }
 
 const SORT_OPTIONS: { value: SortBy; label: string }[] = [
@@ -28,6 +32,10 @@ export function ExploreView({
   onSortChange,
   onTaskClick,
   onSubtaskToggle,
+  onCompleteTask,
+  onRestoreTask,
+  onFlagToggle,
+  onStatusToggle,
 }: Props) {
   const [showCompleted, setShowCompleted] = useState(false);
 
@@ -73,6 +81,9 @@ export function ExploreView({
                 projectName={projectMap.get(task.projectId)?.name}
                 onClick={onTaskClick}
                 onSubtaskToggle={onSubtaskToggle}
+                onComplete={onCompleteTask}
+                onFlagToggle={onFlagToggle}
+                onStatusToggle={onStatusToggle}
               />
             ))}
           </div>
@@ -111,6 +122,7 @@ export function ExploreView({
                     projectName={projectMap.get(task.projectId)?.name}
                     onClick={onTaskClick}
                     onSubtaskToggle={onSubtaskToggle}
+                    onRestore={onRestoreTask}
                   />
                 ))
               )}

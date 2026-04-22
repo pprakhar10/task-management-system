@@ -23,6 +23,8 @@ npx vitest        # Run tests in watch mode
 - **React 19 + TypeScript** (strict mode), built with **Vite**
 - **Tailwind CSS v4** via `@tailwindcss/vite` plugin — dark mode via `.dark` class on `<html>`
 - **Dexie.js** (IndexedDB wrapper) — local-first, no backend
+- **dexie-react-hooks** — `useLiveQuery` for reactive DB queries
+- **fake-indexeddb** (dev) — IndexedDB polyfill for Vitest
 - **Vitest + jsdom** for unit/integration tests
 - **jsPDF** for PDF report generation (text/table API only, no DOM screenshots)
 - **Recharts** for statistics charts (Phase 8)
@@ -49,21 +51,22 @@ Settings     { workDayStart, workDayEnd, defaultBreakStart, defaultBreakEnd,
 ```
 src/
   types/index.ts              — all TypeScript interfaces and type aliases
-  data/mockData.ts            — Phase 1 static mock data (replaced by DB in Phase 3)
+  data/mockData.ts            — seed data (bulkAdded on first app load if DB is empty)
   components/
     layout/
       TopNav.tsx              — top navigation bar
-      Sidebar.tsx             — left sidebar (categories → projects)
-      SidePanel.tsx           — right sliding detail panel
+      Sidebar.tsx             — left sidebar: categories → projects, inline add category/project
+      SidePanel.tsx           — right sliding detail panel with Mark Complete button
+      BackupPromptModal.tsx   — backup reminder modal (shown on load when overdue)
     tasks/
-      TaskCard.tsx            — task card with subtasks
+      TaskCard.tsx            — task card: quick-complete circle, subtask checkboxes, restore button
       SubtaskItem.tsx         — individual subtask checkbox row
   views/
-    ExploreView.tsx           — main task browsing view
+    ExploreView.tsx           — main task browsing: active tasks + collapsible completed archive
     CurrentlyWorkingView.tsx  — tasks with status=currently_working
     MorningMeetingView.tsx    — tasks with status=morning_meeting
   db/
-    database.ts               — AppDatabase (Dexie) class + db singleton + settings seed
+    database.ts               — AppDatabase (Dexie) class + db singleton + settings seed on populate
     crud.ts                   — all CRUD: Category, Project, Task, Subtask, CalendarBlock, Settings
     backup.ts                 — exportDB, importDB, shouldPromptBackup
     index.ts                  — re-exports all db exports
@@ -71,28 +74,34 @@ src/
   utils/
     tasks.ts                  — sortTasks, getDueDateStatus, flagOrder, STATUS_ORDER
     tasks.test.ts             — 11 unit tests for sort and due date logic
-  App.tsx                     — root: live queries, seeder, theme/backup handlers
+  App.tsx                     — root: live queries, seeder, all handlers
   index.css                   — Tailwind import + dark variant config
 ```
 
 ### State (App.tsx)
 - `view: AppView` — which view is active
-- `theme: Theme` — light/dark, applied as class on `<html>`
+- `theme: Theme` — light/dark, loaded from DB settings on mount, persisted on toggle
 - `selectedCategoryId / selectedProjectId` — sidebar filter state
-- `expandedCategories: Set<number>` — sidebar expand/collapse state
+- `expandedCategories: Set<number>` — sidebar expand/collapse state (first category auto-expanded)
 - `selectedTaskId` — which task's side panel is open
 - `sortBy: SortBy` — explore view sort order
+- `showBackupPrompt` — whether backup reminder modal is visible
+- Live queries: `categories`, `projects`, `tasks` (incomplete only), `completedTasks`, `subtasks`
 
 ### Key Behaviours
+- **Subtask completion is independent of task completion** — completing all subtasks does NOT auto-complete the task. Intentional decision.
 - Task status (`currently_working`, `morning_meeting`) is a tag — task appears in BOTH its project view and the special view
-- Completing a task auto-removes it from Currently Working / Morning Meeting
-- Calendar blocks override the default active break window (13:00–14:15)
-- All calendar time snaps to 15-min intervals
-- Unutilized time = work window (settings) minus all calendar blocks for that period
+- Completing a task sets `completed=true`, `completedAt=now`, `status='normal'` — auto-removes from Currently Working / Morning Meeting
+- Completed tasks are archived in the same DB table, visible in the Explore view via a collapsible "Completed Tasks (N)" section at the bottom, sorted by completedAt DESC
+- Completed tasks can be restored to active via "Restore to active" button on the card
+- Quick-complete circle on each active task card — tap to complete without opening the side panel
+- Sort bar in Explore view is sticky (won't scroll away on iOS Safari)
+- Mock data seeded into DB on first app load (when categories table is empty) — not re-seeded after that
+- Backup prompt shown on app load when `now − lastBackupAt > backupReminderDays`; null lastBackupAt also triggers prompt
 
 ### Build Phases
 
-**Current phase: 4 — Task CRUD**
+**Current phase: 4 — Task CRUD (in progress)**
 **Plan file:** `C:\Users\pprak\.claude\plans\staged-shimmying-wadler.md`
 
 | # | Phase | Status |
@@ -100,7 +109,7 @@ src/
 | 1 | Static app shell (mock data, all UI components) | ✅ Complete |
 | 2 | Data layer — Dexie.js schema, CRUD, tests, backup/restore | ✅ Complete |
 | 3 | Wire explore view to real DB | ✅ Complete |
-| 4 | Task CRUD — create/edit/delete at all levels | ⬜ |
+| 4 | Task CRUD — create/edit/delete at all levels | 🔄 In Progress |
 | 5 | Top nav special views — Currently Working, Morning Meeting, Search | ⬜ |
 | 6 | Calendar UI (static) | ⬜ |
 | 7 | Wire calendar to DB | ⬜ |
@@ -108,5 +117,25 @@ src/
 | 9 | PDF report | ⬜ |
 | 10 | Settings + backup UI | ⬜ |
 | 11 | Polish — error states, loading states, edge cases | ⬜ |
+
+### Phase 4 — What's done vs remaining
+
+**Done (shipped, pushed to master):**
+- [x] Add category — inline input in sidebar, auto-expands on create
+- [x] Add project — inline input inside expanded category
+- [x] Quick-complete task — circle button on card, no panel needed
+- [x] Restore completed task — "Restore to active" button in completed archive
+- [x] Completed archive section in Explore view (collapsible, sorted newest-first)
+
+**Remaining:**
+- [ ] "Create New Task" button → side panel form (title, due date, work type, flag, category, project)
+- [ ] Side panel edit mode — edit any task field inline
+- [ ] Delete task with confirmation dialog
+- [ ] Add subtask via "+" in task card / side panel
+- [ ] Edit / delete subtask from side panel
+- [ ] Edit / delete category from sidebar
+- [ ] Edit / delete project from sidebar
+- [ ] Move task to "Currently Working" or "Morning Meeting" from side panel
+- [ ] Tests for task status transitions
 
 **Update the current phase and table at the end of every session.**

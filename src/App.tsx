@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import type { AppView, Category, Project, SortBy, Theme } from './types';
+import type { AppView, Category, Project, SortBy, TaskFlag, TaskStatus, Theme } from './types';
 import { MOCK_CATEGORIES, MOCK_PROJECTS, MOCK_SUBTASKS, MOCK_TASKS } from './data/mockData';
 import { db } from './db/database';
-import { completeTask, updateSubtask, updateSettings } from './db/crud';
+import { completeTask, updateTask, updateSubtask, updateSettings, createCategory, createProject } from './db/crud';
 import { exportDB, shouldPromptBackup } from './db/backup';
 import { sortTasks } from './utils/tasks';
 import { TopNav } from './components/layout/TopNav';
@@ -185,10 +185,38 @@ export default function App() {
     });
   }
 
-  async function handleMarkComplete() {
-    if (selectedTaskId === null) return;
-    await completeTask(selectedTaskId);
-    setSelectedTaskId(null);
+  async function handleMarkComplete(taskId: number) {
+    await completeTask(taskId);
+    if (selectedTaskId === taskId) setSelectedTaskId(null);
+  }
+
+  async function handleRestoreTask(taskId: number) {
+    await updateTask(taskId, { completed: false, completedAt: null });
+  }
+
+  async function handleFlagToggle(taskId: number) {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const FLAG_CYCLE: (TaskFlag | null)[] = [null, 'urgent', 'important'];
+    const next = FLAG_CYCLE[(FLAG_CYCLE.indexOf(task.flag) + 1) % FLAG_CYCLE.length];
+    await updateTask(taskId, { flag: next });
+  }
+
+  async function handleStatusToggle(taskId: number) {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const STATUS_CYCLE: TaskStatus[] = ['normal', 'currently_working', 'morning_meeting'];
+    const next = STATUS_CYCLE[(STATUS_CYCLE.indexOf(task.status) + 1) % STATUS_CYCLE.length];
+    await updateTask(taskId, { status: next });
+  }
+
+  async function handleAddCategory(name: string) {
+    const category = await createCategory(name);
+    setExpandedCategories(prev => new Set(prev).add(category.id));
+  }
+
+  async function handleAddProject(categoryId: number, name: string) {
+    await createProject(categoryId, name);
   }
 
   async function handleThemeToggle() {
@@ -233,6 +261,8 @@ export default function App() {
             onToggleCategory={handleToggleCategory}
             onSelectProject={handleSelectProject}
             onSelectAll={handleSelectAll}
+            onAddCategory={handleAddCategory}
+            onAddProject={handleAddProject}
           />
         )}
 
@@ -247,6 +277,10 @@ export default function App() {
               onSortChange={setSortBy}
               onTaskClick={setSelectedTaskId}
               onSubtaskToggle={handleSubtaskToggle}
+              onCompleteTask={handleMarkComplete}
+              onRestoreTask={handleRestoreTask}
+              onFlagToggle={handleFlagToggle}
+              onStatusToggle={handleStatusToggle}
             />
           )}
 
@@ -257,6 +291,9 @@ export default function App() {
               projectMap={projectMap}
               onTaskClick={setSelectedTaskId}
               onSubtaskToggle={handleSubtaskToggle}
+              onCompleteTask={handleMarkComplete}
+              onFlagToggle={handleFlagToggle}
+              onStatusToggle={handleStatusToggle}
             />
           )}
 
@@ -267,6 +304,9 @@ export default function App() {
               projectMap={projectMap}
               onTaskClick={setSelectedTaskId}
               onSubtaskToggle={handleSubtaskToggle}
+              onCompleteTask={handleMarkComplete}
+              onFlagToggle={handleFlagToggle}
+              onStatusToggle={handleStatusToggle}
             />
           )}
 
@@ -292,7 +332,9 @@ export default function App() {
         isOpen={selectedTaskId !== null}
         onClose={() => setSelectedTaskId(null)}
         onSubtaskToggle={handleSubtaskToggle}
-        onMarkComplete={handleMarkComplete}
+        onMarkComplete={() => selectedTask && handleMarkComplete(selectedTask.id)}
+        onFlagToggle={() => selectedTask && handleFlagToggle(selectedTask.id)}
+        onStatusToggle={() => selectedTask && handleStatusToggle(selectedTask.id)}
       />
 
       {showBackupPrompt && (

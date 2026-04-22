@@ -10,6 +10,8 @@ interface Props {
   onClose: () => void;
   onSubtaskToggle: (subtaskId: number) => void;
   onMarkComplete: () => void;
+  onFlagToggle: () => void;
+  onStatusToggle: () => void;
 }
 
 function formatDate(dateStr: string): string {
@@ -32,7 +34,7 @@ const WORK_TYPE_LABEL: Record<string, string> = {
   shallow: 'Shallow Work',
 };
 
-export function SidePanel({ task, subtasks, projectName, categoryName, isOpen, onClose, onSubtaskToggle, onMarkComplete }: Props) {
+export function SidePanel({ task, subtasks, projectName, categoryName, isOpen, onClose, onSubtaskToggle, onMarkComplete, onFlagToggle, onStatusToggle }: Props) {
   return (
     <>
       {/* Overlay */}
@@ -76,30 +78,35 @@ export function SidePanel({ task, subtasks, projectName, categoryName, isOpen, o
             <div className="flex-1 overflow-y-auto p-5 space-y-5">
               {/* Badges */}
               <div className="flex flex-wrap gap-2">
-                {task.flag && (
-                  <span
-                    className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
-                      task.flag === 'urgent'
-                        ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
-                        : 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400'
-                    }`}
-                  >
-                    {task.flag === 'urgent' ? 'Urgent' : 'Important'}
-                  </span>
-                )}
+                <button
+                  onClick={onFlagToggle}
+                  className={`text-xs font-semibold px-2.5 py-1 rounded-full transition-colors ${
+                    task.flag === 'urgent'
+                      ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/60'
+                      : task.flag === 'important'
+                      ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-900/60'
+                      : 'border border-dashed border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500 hover:border-gray-400 dark:hover:border-gray-500'
+                  }`}
+                  aria-label="Cycle flag"
+                >
+                  {task.flag === 'urgent' ? 'Urgent' : task.flag === 'important' ? 'Important' : 'Flag'}
+                </button>
                 <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${WORK_TYPE_BADGE[task.workType]}`}>
                   {WORK_TYPE_LABEL[task.workType]}
                 </span>
-                {task.status === 'currently_working' && (
-                  <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">
-                    Currently Working
-                  </span>
-                )}
-                {task.status === 'morning_meeting' && (
-                  <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300">
-                    Morning Meeting
-                  </span>
-                )}
+                <button
+                  onClick={onStatusToggle}
+                  className={`text-xs font-medium px-2.5 py-1 rounded-full transition-colors ${
+                    task.status === 'currently_working'
+                      ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300 hover:opacity-80'
+                      : task.status === 'morning_meeting'
+                      ? 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300 hover:opacity-80'
+                      : 'border border-dashed border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500 hover:border-gray-400 dark:hover:border-gray-500'
+                  }`}
+                  aria-label="Cycle status"
+                >
+                  {task.status === 'currently_working' ? 'Currently Working' : task.status === 'morning_meeting' ? 'Morning Meeting' : 'Status'}
+                </button>
               </div>
 
               {/* Due date */}
