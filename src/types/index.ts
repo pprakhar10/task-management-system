@@ -2,7 +2,7 @@ export type WorkType = 'deep' | 'shallow' | 'active_break';
 export type TaskFlag = 'urgent' | 'important';
 export type TaskStatus = 'normal' | 'currently_working' | 'morning_meeting';
 export type Theme = 'light' | 'dark';
-export type AppView = 'explore' | 'currently_working' | 'morning_meeting' | 'statistics' | 'calendar';
+export type AppView = 'explore' | 'currently_working' | 'morning_meeting' | 'statistics' | 'calendar' | 'search';
 export type SortBy = 'dueDate' | 'flag' | 'status';
 
 export interface Category {

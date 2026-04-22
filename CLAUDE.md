@@ -63,8 +63,9 @@ src/
       SubtaskItem.tsx         — individual subtask checkbox row
   views/
     ExploreView.tsx           — main task browsing: active tasks + collapsible completed archive
-    CurrentlyWorkingView.tsx  — tasks with status=currently_working
-    MorningMeetingView.tsx    — tasks with status=morning_meeting
+    CurrentlyWorkingView.tsx  — tasks with status=currently_working (morning_meeting included), sorted by dueDate
+    MorningMeetingView.tsx    — tasks with status=morning_meeting, sorted by dueDate
+    SearchView.tsx            — search + filter view: text query, status/workType/flag/category/project filters
   db/
     database.ts               — AppDatabase (Dexie) class + db singleton + settings seed on populate
     crud.ts                   — all CRUD: Category, Project, Task, Subtask, CalendarBlock, Settings
@@ -74,6 +75,8 @@ src/
   utils/
     tasks.ts                  — sortTasks, getDueDateStatus, flagOrder, STATUS_ORDER
     tasks.test.ts             — 11 unit tests for sort and due date logic
+    search.ts                 — filterTasks, SearchFilters, DEFAULT_FILTERS, CompletedFilter
+    search.test.ts            — 13 unit tests for all filter types and combinations
   App.tsx                     — root: live queries, seeder, all handlers
   index.css                   — Tailwind import + dark variant config
 ```
@@ -98,10 +101,15 @@ src/
 - Sort bar in Explore view is sticky (won't scroll away on iOS Safari)
 - Mock data seeded into DB on first app load (when categories table is empty) — not re-seeded after that
 - Backup prompt shown on app load when `now − lastBackupAt > backupReminderDays`; null lastBackupAt also triggers prompt
+- Morning Meeting tasks appear in Both Morning Meeting view AND Currently Working view
+- Category/project selection in create/edit form uses button-group selectors (same pattern as Work Type / Flag), not dropdowns — projects auto-populate when category is tapped
+- Flag badge and Status badge are stacked vertically on the top-right of each task card
+- Subtasks on task cards are fully editable inline (add/edit/delete) without opening side panel; edit/delete icons always visible (not hover-only) — touch-friendly
+- Subtask edit/delete buttons in side panel are always visible (not hover-only)
 
 ### Build Phases
 
-**Current phase: 5 — Top nav special views (next)**
+**Current phase: 6 — Calendar view UI (static) (next)**
 **Plan file:** `C:\Users\pprak\.claude\plans\staged-shimmying-wadler.md`
 
 | # | Phase | Status |
@@ -110,7 +118,7 @@ src/
 | 2 | Data layer — Dexie.js schema, CRUD, tests, backup/restore | ✅ Complete |
 | 3 | Wire explore view to real DB | ✅ Complete |
 | 4 | Task CRUD — create/edit/delete at all levels | ✅ Complete |
-| 5 | Top nav special views — Currently Working, Morning Meeting, Search | ⬜ |
+| 5 | Top nav special views — Currently Working, Morning Meeting, Search | ✅ Complete |
 | 6 | Calendar UI (static) | ⬜ |
 | 7 | Wire calendar to DB | ⬜ |
 | 8 | Statistics page | ⬜ |
@@ -118,9 +126,19 @@ src/
 | 10 | Settings + backup UI | ⬜ |
 | 11 | Polish — error states, loading states, edge cases | ⬜ |
 
-### Phase 4 — What's done vs remaining
+### Phase 5 — Complete
 
-**Done (shipped, pushed to master):**
+- [x] Currently Working view: live query, sorted by dueDate (morning meeting tasks included)
+- [x] Morning Meeting view: live query, sorted by dueDate
+- [x] Search view: text search + 5 filter types (status, work type, flag, category, project)
+- [x] Category→project drill-down in search filters (projects appear when category selected)
+- [x] Search shows active + completed tasks; completed cards show restore, active cards show full controls
+- [x] Clicking any task in search opens side panel (selectedTask lookup fixed to cover completed tasks)
+- [x] Search button in TopNav highlights when search view is active
+- [x] 13 new tests for filterTasks logic (75 total)
+
+### Phase 4 — Complete (all shipped to master)
+
 - [x] Add category — inline input in sidebar, auto-expands on create
 - [x] Add project — inline input inside expanded category
 - [x] Quick-complete task — circle button on card, no panel needed
@@ -129,17 +147,12 @@ src/
 - [x] Edit / delete category from sidebar (dots menu → rename / delete with inline confirm)
 - [x] Edit / delete project from sidebar (dots menu → rename / delete with inline confirm)
 - [x] Move task to "Currently Working" / "Morning Meeting" — tap-to-cycle status badge on card + panel
-
-**Done (local, not yet pushed):**
 - [x] "Create New Task" button → opens side panel form (title, due date, work type, flag, category, project)
 - [x] Side panel edit mode — prefills form, saves on submit
 - [x] Delete task with inline confirmation in side panel
-- [x] Add subtask via "+" input in side panel (title only; due date optional, not exposed in UI)
-- [x] Edit subtask inline in side panel (hover → pencil icon → edit in place)
-- [x] Delete subtask in side panel (hover → trash icon, immediate)
+- [x] Add / edit / delete subtask inline on task card (no side panel needed)
+- [x] Add / edit / delete subtask in side panel (always-visible icons, touch-friendly)
 - [x] Tests for task status transitions (8 new tests, 62 total)
-
-**Remaining:**
 - [ ] Touch-friendly side panel: full-height on narrow viewports, scrollable (deferred to Phase 11)
 
 **Update the current phase and table at the end of every session.**

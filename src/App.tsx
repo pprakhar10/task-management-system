@@ -19,6 +19,7 @@ import { BackupPromptModal } from './components/layout/BackupPromptModal';
 import { ExploreView } from './views/ExploreView';
 import { CurrentlyWorkingView } from './views/CurrentlyWorkingView';
 import { MorningMeetingView } from './views/MorningMeetingView';
+import { SearchView } from './views/SearchView';
 
 export default function App() {
   const [view, setView] = useState<AppView>('explore');
@@ -136,18 +137,26 @@ export default function App() {
   }, [completedTasks, projects, selectedProjectId, selectedCategoryId]);
 
   const currentlyWorkingTasks = useMemo(
-    () => tasks.filter(t => t.status === 'currently_working' || t.status === 'morning_meeting'),
+    () => sortTasks(
+      tasks.filter(t => t.status === 'currently_working' || t.status === 'morning_meeting'),
+      'dueDate',
+    ),
     [tasks],
   );
 
   const morningMeetingTasks = useMemo(
-    () => tasks.filter(t => t.status === 'morning_meeting'),
+    () => sortTasks(tasks.filter(t => t.status === 'morning_meeting'), 'dueDate'),
     [tasks],
   );
 
+  const allTasksForSearch = useMemo(
+    () => [...tasks, ...completedTasks],
+    [tasks, completedTasks],
+  );
+
   const selectedTask = useMemo(
-    () => (selectedTaskId !== null ? tasks.find(t => t.id === selectedTaskId) ?? null : null),
-    [selectedTaskId, tasks],
+    () => (selectedTaskId !== null ? allTasksForSearch.find(t => t.id === selectedTaskId) ?? null : null),
+    [selectedTaskId, allTasksForSearch],
   );
 
   const selectedTaskSubtasks = useMemo(
@@ -328,6 +337,7 @@ export default function App() {
         theme={theme}
         onThemeToggle={handleThemeToggle}
         onCreateTask={handleOpenCreate}
+        onSearch={() => handleViewChange('search')}
       />
 
       <div className="flex pt-14 h-full">
@@ -395,6 +405,25 @@ export default function App() {
               onTaskClick={setSelectedTaskId}
               onSubtaskToggle={handleSubtaskToggle}
               onCompleteTask={handleMarkComplete}
+              onFlagToggle={handleFlagToggle}
+              onStatusToggle={handleStatusToggle}
+              onAddSubtask={(taskId, title) => handleAddSubtask(taskId, title, null)}
+              onUpdateSubtask={handleUpdateSubtask}
+              onDeleteSubtask={handleDeleteSubtask}
+            />
+          )}
+
+          {view === 'search' && (
+            <SearchView
+              allTasks={allTasksForSearch}
+              subtasksByTaskId={subtasksByTaskId}
+              projectMap={projectMap}
+              categories={categories}
+              projects={projects}
+              onTaskClick={setSelectedTaskId}
+              onSubtaskToggle={handleSubtaskToggle}
+              onCompleteTask={handleMarkComplete}
+              onRestoreTask={handleRestoreTask}
               onFlagToggle={handleFlagToggle}
               onStatusToggle={handleStatusToggle}
               onAddSubtask={(taskId, title) => handleAddSubtask(taskId, title, null)}
