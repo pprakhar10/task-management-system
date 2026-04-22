@@ -1,5 +1,6 @@
 import type { Task, Subtask } from '../../types';
 import { SubtaskItem } from './SubtaskItem';
+import { getDueDateStatus } from '../../utils/tasks';
 
 interface Props {
   task: Task;
@@ -40,9 +41,9 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export function TaskCard({ task, subtasks, projectName, onClick, onSubtaskToggle }: Props) {
-  const today = new Date().toISOString().split('T')[0];
-  const isOverdue = !task.completed && task.dueDate < today;
-  const isDueToday = !task.completed && task.dueDate === today;
+  const dueDateStatus = getDueDateStatus(task.dueDate, task.completed);
+  const isOverdue = dueDateStatus === 'overdue';
+  const isDueToday = dueDateStatus === 'due_today';
 
   const completedCount = subtasks.filter(s => s.completed).length;
 

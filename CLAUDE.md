@@ -62,7 +62,16 @@ src/
     ExploreView.tsx           — main task browsing view
     CurrentlyWorkingView.tsx  — tasks with status=currently_working
     MorningMeetingView.tsx    — tasks with status=morning_meeting
-  App.tsx                     — root: state, view switching, theme, sort logic
+  db/
+    database.ts               — AppDatabase (Dexie) class + db singleton + settings seed
+    crud.ts                   — all CRUD: Category, Project, Task, Subtask, CalendarBlock, Settings
+    backup.ts                 — exportDB, importDB, shouldPromptBackup
+    index.ts                  — re-exports all db exports
+    database.test.ts          — 43 unit tests covering all CRUD + backup round-trip
+  utils/
+    tasks.ts                  — sortTasks, getDueDateStatus, flagOrder, STATUS_ORDER
+    tasks.test.ts             — 11 unit tests for sort and due date logic
+  App.tsx                     — root: live queries, seeder, theme/backup handlers
   index.css                   — Tailwind import + dark variant config
 ```
 
@@ -82,15 +91,22 @@ src/
 - Unutilized time = work window (settings) minus all calendar blocks for that period
 
 ### Build Phases
-1. ✅ Static app shell (mock data, all UI components)
-2. Data layer — Dexie.js schema, CRUD, tests, backup/restore
-3. Wire explore view to real DB
-4. Task CRUD — create/edit/delete at all levels
-5. Top nav special views — Currently Working, Morning Meeting, Search
-6. Calendar UI (static)
-7. Wire calendar to DB
-8. Statistics page
-9. PDF report
-10. Settings + backup UI
-11. Polish — error states, loading states, edge cases
-```
+
+**Current phase: 4 — Task CRUD**
+**Plan file:** `C:\Users\pprak\.claude\plans\staged-shimmying-wadler.md`
+
+| # | Phase | Status |
+|---|---|---|
+| 1 | Static app shell (mock data, all UI components) | ✅ Complete |
+| 2 | Data layer — Dexie.js schema, CRUD, tests, backup/restore | ✅ Complete |
+| 3 | Wire explore view to real DB | ✅ Complete |
+| 4 | Task CRUD — create/edit/delete at all levels | ⬜ |
+| 5 | Top nav special views — Currently Working, Morning Meeting, Search | ⬜ |
+| 6 | Calendar UI (static) | ⬜ |
+| 7 | Wire calendar to DB | ⬜ |
+| 8 | Statistics page | ⬜ |
+| 9 | PDF report | ⬜ |
+| 10 | Settings + backup UI | ⬜ |
+| 11 | Polish — error states, loading states, edge cases | ⬜ |
+
+**Update the current phase and table at the end of every session.**

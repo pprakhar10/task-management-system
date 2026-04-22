@@ -9,6 +9,7 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   onSubtaskToggle: (subtaskId: number) => void;
+  onMarkComplete: () => void;
 }
 
 function formatDate(dateStr: string): string {
@@ -31,7 +32,7 @@ const WORK_TYPE_LABEL: Record<string, string> = {
   shallow: 'Shallow Work',
 };
 
-export function SidePanel({ task, subtasks, projectName, categoryName, isOpen, onClose, onSubtaskToggle }: Props) {
+export function SidePanel({ task, subtasks, projectName, categoryName, isOpen, onClose, onSubtaskToggle, onMarkComplete }: Props) {
   return (
     <>
       {/* Overlay */}
@@ -134,7 +135,10 @@ export function SidePanel({ task, subtasks, projectName, categoryName, isOpen, o
 
             {/* Footer actions */}
             <div className="p-4 border-t border-gray-200 dark:border-gray-700 flex gap-2">
-              <button className="flex-1 min-h-[44px] bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors">
+              <button
+                onClick={onMarkComplete}
+                className="flex-1 min-h-[44px] bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors"
+              >
                 Mark Complete
               </button>
               <button className="min-h-[44px] px-4 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
