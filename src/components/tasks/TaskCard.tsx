@@ -18,6 +18,10 @@ function formatDate(dateStr: string): string {
   });
 }
 
+function formatTimestamp(ts: number): string {
+  return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
 const WORK_TYPE_BADGE: Record<string, string> = {
   deep: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
   shallow: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
@@ -67,7 +71,7 @@ export function TaskCard({ task, subtasks, projectName, onClick, onSubtaskToggle
       <div className="p-4">
         {/* Title row */}
         <div className="flex items-start justify-between gap-3 mb-2">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 leading-snug">
+          <h3 className={`text-sm font-semibold leading-snug ${task.completed ? 'line-through text-gray-400 dark:text-gray-500' : 'text-gray-900 dark:text-gray-100'}`}>
             {task.title}
           </h3>
           {task.flag && (
@@ -85,9 +89,15 @@ export function TaskCard({ task, subtasks, projectName, onClick, onSubtaskToggle
 
         {/* Meta row */}
         <div className="flex flex-wrap items-center gap-2 mb-3">
-          <span className={`text-xs ${dueDateColorClass}`}>
-            {isOverdue ? 'Overdue · ' : isDueToday ? 'Due today · ' : ''}{formatDate(task.dueDate)}
-          </span>
+          {task.completed ? (
+            <span className="text-xs text-gray-400 dark:text-gray-500">
+              Completed · {formatTimestamp(task.completedAt ?? task.createdAt)}
+            </span>
+          ) : (
+            <span className={`text-xs ${dueDateColorClass}`}>
+              {isOverdue ? 'Overdue · ' : isDueToday ? 'Due today · ' : ''}{formatDate(task.dueDate)}
+            </span>
+          )}
           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${WORK_TYPE_BADGE[task.workType]}`}>
             {WORK_TYPE_LABEL[task.workType]}
           </span>

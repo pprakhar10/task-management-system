@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import type { Task, Subtask, Project, SortBy } from '../types';
 import { TaskCard } from '../components/tasks/TaskCard';
 
 interface Props {
   tasks: Task[];
+  completedTasks: Task[];
   subtasksByTaskId: Map<number, Subtask[]>;
   projectMap: Map<number, Project>;
   sortBy: SortBy;
@@ -19,6 +21,7 @@ const SORT_OPTIONS: { value: SortBy; label: string }[] = [
 
 export function ExploreView({
   tasks,
+  completedTasks,
   subtasksByTaskId,
   projectMap,
   sortBy,
@@ -26,6 +29,8 @@ export function ExploreView({
   onTaskClick,
   onSubtaskToggle,
 }: Props) {
+  const [showCompleted, setShowCompleted] = useState(false);
+
   return (
     <div className="flex-1 flex flex-col min-h-0">
       {/* Sort bar */}
@@ -72,6 +77,46 @@ export function ExploreView({
             ))}
           </div>
         )}
+
+        {/* Completed tasks toggle */}
+        <div className="max-w-2xl mt-6">
+          <button
+            onClick={() => setShowCompleted(prev => !prev)}
+            className="w-full flex items-center justify-center gap-2 py-3 text-xs font-medium text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors border-t border-gray-200 dark:border-gray-700"
+          >
+            <svg
+              className={`w-3.5 h-3.5 transition-transform ${showCompleted ? 'rotate-90' : ''}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2.5}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+            Completed Tasks ({completedTasks.length})
+          </button>
+
+          {showCompleted && (
+            <div className="mt-3 space-y-3">
+              {completedTasks.length === 0 ? (
+                <p className="text-center text-xs text-gray-400 dark:text-gray-500 py-4">
+                  No completed tasks yet.
+                </p>
+              ) : (
+                completedTasks.map(task => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    subtasks={subtasksByTaskId.get(task.id) ?? []}
+                    projectName={projectMap.get(task.projectId)?.name}
+                    onClick={onTaskClick}
+                    onSubtaskToggle={onSubtaskToggle}
+                  />
+                ))
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

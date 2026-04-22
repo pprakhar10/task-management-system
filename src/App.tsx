@@ -28,6 +28,7 @@ export default function App() {
   const categories = useLiveQuery(() => db.categories.toArray(), []) ?? [];
   const projects = useLiveQuery(() => db.projects.toArray(), []) ?? [];
   const tasks = useLiveQuery(() => db.tasks.filter(t => !t.completed).toArray(), []) ?? [];
+  const completedTasks = useLiveQuery(() => db.tasks.filter(t => t.completed).toArray(), []) ?? [];
   const subtasks = useLiveQuery(() => db.subtasks.toArray(), []) ?? [];
 
   // Seed mock data on first run (when DB is empty)
@@ -111,6 +112,21 @@ export default function App() {
     }
     return sortTasks(filtered, sortBy);
   }, [tasks, projects, selectedProjectId, selectedCategoryId, sortBy]);
+
+  const filteredCompletedTasks = useMemo(() => {
+    let filtered = completedTasks;
+    if (selectedProjectId !== null) {
+      filtered = completedTasks.filter(t => t.projectId === selectedProjectId);
+    } else if (selectedCategoryId !== null) {
+      const projectIds = new Set(
+        projects.filter(p => p.categoryId === selectedCategoryId).map(p => p.id),
+      );
+      filtered = completedTasks.filter(t => projectIds.has(t.projectId));
+    }
+    return [...filtered].sort(
+      (a, b) => (b.completedAt ?? b.createdAt) - (a.completedAt ?? a.createdAt),
+    );
+  }, [completedTasks, projects, selectedProjectId, selectedCategoryId]);
 
   const currentlyWorkingTasks = useMemo(
     () => tasks.filter(t => t.status === 'currently_working'),
@@ -224,6 +240,7 @@ export default function App() {
           {view === 'explore' && (
             <ExploreView
               tasks={filteredTasks}
+              completedTasks={filteredCompletedTasks}
               subtasksByTaskId={subtasksByTaskId}
               projectMap={projectMap}
               sortBy={sortBy}
