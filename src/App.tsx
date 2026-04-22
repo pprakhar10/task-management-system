@@ -20,6 +20,7 @@ import { ExploreView } from './views/ExploreView';
 import { CurrentlyWorkingView } from './views/CurrentlyWorkingView';
 import { MorningMeetingView } from './views/MorningMeetingView';
 import { SearchView } from './views/SearchView';
+import { CalendarView } from './views/CalendarView';
 
 export default function App() {
   const [view, setView] = useState<AppView>('explore');
@@ -438,11 +439,7 @@ export default function App() {
             </div>
           )}
 
-          {view === 'calendar' && (
-            <div className="flex-1 flex items-center justify-center">
-              <p className="text-gray-400 dark:text-gray-500 text-sm">Calendar — coming in Phase 6</p>
-            </div>
-          )}
+          {view === 'calendar' && <CalendarView />}
         </main>
       </div>
 
