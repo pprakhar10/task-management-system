@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import type { AppView, Category, Project, SortBy, TaskFlag, TaskStatus, Theme } from './types';
 import { MOCK_CATEGORIES, MOCK_PROJECTS, MOCK_SUBTASKS, MOCK_TASKS } from './data/mockData';
 import { db } from './db/database';
-import { completeTask, updateTask, updateSubtask, updateSettings, createCategory, createProject } from './db/crud';
+import { completeTask, updateTask, updateSubtask, updateSettings, createCategory, createProject, updateCategory, deleteCategory, updateProject, deleteProject } from './db/crud';
 import { exportDB, shouldPromptBackup } from './db/backup';
 import { sortTasks } from './utils/tasks';
 import { TopNav } from './components/layout/TopNav';
@@ -219,6 +219,29 @@ export default function App() {
     await createProject(categoryId, name);
   }
 
+  async function handleRenameCategory(id: number, name: string) {
+    await updateCategory(id, { name });
+  }
+
+  async function handleDeleteCategory(id: number) {
+    await deleteCategory(id);
+    if (selectedCategoryId === id) {
+      setSelectedCategoryId(null);
+      setSelectedProjectId(null);
+    }
+  }
+
+  async function handleRenameProject(id: number, name: string) {
+    await updateProject(id, { name });
+  }
+
+  async function handleDeleteProject(id: number) {
+    await deleteProject(id);
+    if (selectedProjectId === id) {
+      setSelectedProjectId(null);
+    }
+  }
+
   async function handleThemeToggle() {
     const next: Theme = theme === 'light' ? 'dark' : 'light';
     setTheme(next);
@@ -242,7 +265,7 @@ export default function App() {
   const showSidebar = view === 'explore';
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100">
+    <div className="h-dvh overflow-hidden bg-gray-50 dark:bg-gray-950 text-gray-900 dark:text-gray-100">
       <TopNav
         view={view}
         onViewChange={handleViewChange}
@@ -250,7 +273,7 @@ export default function App() {
         onThemeToggle={handleThemeToggle}
       />
 
-      <div className="flex pt-14 h-screen">
+      <div className="flex pt-14 h-full">
         {showSidebar && (
           <Sidebar
             categories={categories}
@@ -263,6 +286,10 @@ export default function App() {
             onSelectAll={handleSelectAll}
             onAddCategory={handleAddCategory}
             onAddProject={handleAddProject}
+            onRenameCategory={handleRenameCategory}
+            onDeleteCategory={handleDeleteCategory}
+            onRenameProject={handleRenameProject}
+            onDeleteProject={handleDeleteProject}
           />
         )}
 
