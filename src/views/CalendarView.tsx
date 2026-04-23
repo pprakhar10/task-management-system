@@ -129,6 +129,7 @@ interface BlockDialogProps {
   categories: Category[];
   projects: Project[];
   tasks: Task[];
+  error?: string;
 }
 
 function BlockDialog({
@@ -141,6 +142,7 @@ function BlockDialog({
   categories,
   projects,
   tasks,
+  error,
 }: BlockDialogProps) {
   function adjustTime(field: 'startTime' | 'endTime', delta: number) {
     const startMin = timeToMinutes(state.startTime);
@@ -331,7 +333,11 @@ function BlockDialog({
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-2 flex-shrink-0">
+        <div className="px-5 py-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0 space-y-3">
+          {error && (
+            <p className="text-xs text-red-600 dark:text-red-400 font-medium">{error}</p>
+          )}
+          <div className="flex items-center gap-2">
           {onDelete && (
             <button
               onClick={onDelete}
@@ -354,6 +360,7 @@ function BlockDialog({
               Save
             </button>
           </div>
+          </div>
         </div>
       </div>
     </div>
@@ -371,6 +378,7 @@ interface CalendarViewProps {
 
 export function CalendarView({ categories, projects, tasks, onCreateTask }: CalendarViewProps) {
   const [dialog, setDialog] = useState<DialogState | null>(null);
+  const [dialogError, setDialogError] = useState<string | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -475,6 +483,17 @@ export function CalendarView({ categories, projects, tasks, onCreateTask }: Cale
 
   async function handleDialogSave() {
     if (!dialog) return;
+    const newStart = timeToMinutes(dialog.startTime);
+    const newEnd = timeToMinutes(dialog.endTime);
+    const conflict = weekBlocks.find(b => {
+      if (b.date !== dialog.date) return false;
+      if (dialog.mode === 'edit' && b.id === dialog.blockId) return false;
+      return newStart < timeToMinutes(b.endTime) && timeToMinutes(b.startTime) < newEnd;
+    });
+    if (conflict) {
+      setDialogError(`Overlaps with existing block (${conflict.startTime}–${conflict.endTime})`);
+      return;
+    }
     const blockData = {
       taskId: dialog.workType === 'active_break' ? null : (dialog.taskId ?? null),
       workType: dialog.workType,
@@ -696,14 +715,15 @@ export function CalendarView({ categories, projects, tasks, onCreateTask }: Cale
       {dialog && (
         <BlockDialog
           state={dialog}
-          onClose={() => setDialog(null)}
-          onChange={changes => setDialog(prev => (prev ? { ...prev, ...changes } : prev))}
+          onClose={() => { setDialog(null); setDialogError(null); }}
+          onChange={changes => { setDialogError(null); setDialog(prev => (prev ? { ...prev, ...changes } : prev)); }}
           onSave={handleDialogSave}
           onDelete={dialog.mode === 'edit' ? handleDialogDelete : undefined}
           onCreateTask={handleCreateNewTask}
           categories={categories}
           projects={projects}
           tasks={tasks}
+          error={dialogError ?? undefined}
         />
       )}
     </div>
