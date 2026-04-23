@@ -21,6 +21,7 @@ import { CurrentlyWorkingView } from './views/CurrentlyWorkingView';
 import { MorningMeetingView } from './views/MorningMeetingView';
 import { SearchView } from './views/SearchView';
 import { CalendarView } from './views/CalendarView';
+import { StatisticsView } from './views/StatisticsView';
 
 export default function App() {
   const [view, setView] = useState<AppView>('explore');
@@ -444,9 +445,11 @@ export default function App() {
           )}
 
           {view === 'statistics' && (
-            <div className="flex-1 flex items-center justify-center">
-              <p className="text-gray-400 dark:text-gray-500 text-sm">Statistics — coming in Phase 8</p>
-            </div>
+            <StatisticsView
+              allTasks={allTasksForSearch}
+              projects={projects}
+              categories={categories}
+            />
           )}
 
           {view === 'calendar' && (

@@ -70,7 +70,8 @@ src/
     CurrentlyWorkingView.tsx  — tasks with status=currently_working (morning_meeting included), sorted by dueDate
     MorningMeetingView.tsx    — tasks with status=morning_meeting, sorted by dueDate
     SearchView.tsx            — search + filter view: text query, status/workType/flag/category/project filters
-    CalendarView.tsx          — full 24-hour week calendar; week nav; scheduling dialog; static mock blocks (wired in Phase 7)
+    CalendarView.tsx          — full 24-hour week calendar; week nav; scheduling dialog wired to DB; tap block to edit/delete
+    StatisticsView.tsx        — time analytics: period filter, summary cards, stacked bar, category/project/task breakdowns
   db/
     database.ts               — AppDatabase (Dexie) class + db singleton + settings seed on populate
     crud.ts                   — all CRUD: Category, Project, Task, Subtask, CalendarBlock, Settings
@@ -82,6 +83,10 @@ src/
     tasks.test.ts             — 11 unit tests for sort and due date logic
     search.ts                 — filterTasks, SearchFilters, DEFAULT_FILTERS, CompletedFilter
     search.test.ts            — 13 unit tests for all filter types and combinations
+    calendar.ts               — snapToSlot, isBlockInBreakBand, calcBlockMove (pure utilities)
+    calendar.test.ts          — 25 unit tests for calendar utilities
+    statistics.ts             — timeToMinutes, minutesToDisplay, blockDurationMinutes, workDayOverlapMinutes, weekdaysInRange, calcWorkTypeSummary, calcCategoryBreakdown, calcProjectBreakdown, calcTaskBreakdown
+    statistics.test.ts        — 35 unit tests for all statistics functions
   App.tsx                     — root: live queries, seeder, all handlers
   index.css                   — Tailwind import + dark variant config
 ```
@@ -94,6 +99,7 @@ src/
 - `selectedTaskId` — which task's side panel is open
 - `sortBy: SortBy` — explore view sort order
 - `showBackupPrompt` — whether backup reminder modal is visible
+- `calendarCreatePreset` — pre-fills SidePanel category/project when "+ Create New Task" is clicked from calendar dialog
 - Live queries: `categories`, `projects`, `tasks` (incomplete only), `completedTasks`, `subtasks`
 
 ### Key Behaviours
@@ -114,7 +120,7 @@ src/
 
 ### Build Phases
 
-**Current phase: 7 — Wire calendar to DB (next)**
+**Current phase: 9 — PDF Report (next)**
 **Plan file:** `C:\Users\pprak\.claude\plans\staged-shimmying-wadler.md`
 
 | # | Phase | Status |
@@ -125,11 +131,42 @@ src/
 | 4 | Task CRUD — create/edit/delete at all levels | ✅ Complete |
 | 5 | Top nav special views — Currently Working, Morning Meeting, Search | ✅ Complete |
 | 6 | Calendar UI (static) | ✅ Complete |
-| 7 | Wire calendar to DB | ⬜ |
-| 8 | Statistics page | ⬜ |
+| 7 | Wire calendar to DB | ✅ Complete |
+| 8 | Statistics page | ✅ Complete |
 | 9 | PDF report | ⬜ |
 | 10 | Settings + backup UI | ⬜ |
 | 11 | Polish — error states, loading states, edge cases | ⬜ |
+
+### Phase 8 — Complete
+
+- [x] Statistics page accessible from top nav (Statistics button)
+- [x] Period filter: This Week / This Month / Custom date range
+- [x] Summary cards: Deep Work / Shallow Work / Active Break / Unutilized (hours + % of work window)
+- [x] Stacked distribution bar: work window split by type, in-window minutes only
+- [x] Category breakdown table with mini bars (deep + shallow split)
+- [x] Project breakdown table with mini bars (category name + deep + shallow split)
+- [x] Task breakdown table with mini bars (work type badge + project + time)
+- [x] All derived from real CalendarBlocks via useLiveQuery; settings-aware (workDayStart/workDayEnd)
+- [x] New src/utils/statistics.ts: timeToMinutes, minutesToDisplay, blockDurationMinutes, workDayOverlapMinutes, weekdaysInRange, calcWorkTypeSummary, calcCategoryBreakdown, calcProjectBreakdown, calcTaskBreakdown
+- [x] 35 new tests — 135 total passing
+
+### Phase 7 — Complete
+
+- [x] useLiveQuery for calendar blocks within displayed week (date-range indexed query)
+- [x] Click empty slot → dialog creates real CalendarBlock in DB
+- [x] Tap existing block → edit dialog updates real CalendarBlock in DB
+- [x] Delete block from edit dialog
+- [x] Cascading category → project → task selectors populated from real DB
+- [x] All time entry snaps to 15-min intervals via snapToSlot utility
+- [x] Long press (500ms) on block enters drag mode; drop commits updated date/time to DB
+- [x] Drop indicator rendered at snapped 15-min target position during drag
+- [x] Touchmove scroll prevented on container during active drag (non-passive listener)
+- [x] Block tap vs long-press distinguished: tap opens edit dialog, long press starts drag
+- [x] "+ Create New Task" in dialog: stores pending state, opens SidePanel; dialog re-opens with new task pre-selected after creation
+- [x] calendarCreatePreset in App.tsx pre-fills SidePanel from calendar without changing Explore sidebar selection
+- [x] Active break band override: deep/shallow blocks render on top of amber band (z-10)
+- [x] New src/utils/calendar.ts: snapToSlot, isBlockInBreakBand, calcBlockMove (pure, exported)
+- [x] 25 new tests — 100 total passing
 
 ### Phase 6 — Complete
 
