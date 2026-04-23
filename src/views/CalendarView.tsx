@@ -436,23 +436,25 @@ export function CalendarView() {
                     isToday ? 'bg-indigo-50/20 dark:bg-indigo-900/5' : ''
                   }`}
                 >
-                  {/* Hour lines */}
-                  {HOUR_MARKS.map(h => (
-                    <div
-                      key={h}
-                      className="absolute left-0 right-0 border-t border-gray-100 dark:border-gray-800"
-                      style={{ top: ((h * 60 - GRID_START_MIN) / 15) * SLOT_HEIGHT }}
-                    />
-                  ))}
-
-                  {/* Half-hour lines */}
-                  {HOUR_MARKS.slice(0, -1).map(h => (
-                    <div
-                      key={`${h}h`}
-                      className="absolute left-0 right-0 border-t border-dashed border-gray-50 dark:border-gray-800/60"
-                      style={{ top: ((h * 60 + 30 - GRID_START_MIN) / 15) * SLOT_HEIGHT }}
-                    />
-                  ))}
+                  {/* Grid lines — every 15 min; hour marks are darker */}
+                  {Array.from({ length: TOTAL_SLOTS }, (_, slot) => {
+                    const minFromStart = slot * 15;
+                    const isHour = minFromStart % 60 === 0;
+                    const isHalf = minFromStart % 30 === 0 && !isHour;
+                    return (
+                      <div
+                        key={slot}
+                        className={`absolute left-0 right-0 border-t ${
+                          isHour
+                            ? 'border-gray-200 dark:border-gray-700'
+                            : isHalf
+                            ? 'border-gray-100 dark:border-gray-800'
+                            : 'border-gray-100/60 dark:border-gray-800/40'
+                        }`}
+                        style={{ top: slot * SLOT_HEIGHT }}
+                      />
+                    );
+                  })}
 
                   {/* Active break band */}
                   <div
