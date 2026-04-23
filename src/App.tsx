@@ -32,6 +32,7 @@ export default function App() {
   const [sidePanelMode, setSidePanelMode] = useState<PanelMode>('view');
   const [sortBy, setSortBy] = useState<SortBy>('dueDate');
   const [showBackupPrompt, setShowBackupPrompt] = useState(false);
+  const [calendarCreatePreset, setCalendarCreatePreset] = useState<{ categoryId: number; projectId: number } | null>(null);
 
   // Live queries — UI re-renders automatically when DB changes
   const categories = useLiveQuery(() => db.categories.toArray(), []) ?? [];
@@ -175,10 +176,12 @@ export default function App() {
   function closePanel() {
     setSelectedTaskId(null);
     setSidePanelMode('view');
+    setCalendarCreatePreset(null);
   }
 
-  function handleOpenCreate() {
+  function handleOpenCreate(preset?: { categoryId: number; projectId: number }) {
     setSelectedTaskId(null);
+    setCalendarCreatePreset(preset ?? null);
     setSidePanelMode('create');
   }
 
@@ -446,7 +449,14 @@ export default function App() {
             </div>
           )}
 
-          {view === 'calendar' && <CalendarView onCreateTask={handleOpenCreate} />}
+          {view === 'calendar' && (
+            <CalendarView
+              categories={categories}
+              projects={projects}
+              tasks={tasks}
+              onCreateTask={handleOpenCreate}
+            />
+          )}
         </main>
       </div>
 
@@ -460,9 +470,10 @@ export default function App() {
         projects={projects}
         isOpen={isPanelOpen}
         createPreset={
-          selectedProjectId !== null && selectedCategoryId !== null
+          calendarCreatePreset ??
+          (selectedProjectId !== null && selectedCategoryId !== null
             ? { categoryId: selectedCategoryId, projectId: selectedProjectId }
-            : undefined
+            : undefined)
         }
         onClose={closePanel}
         onSubtaskToggle={handleSubtaskToggle}

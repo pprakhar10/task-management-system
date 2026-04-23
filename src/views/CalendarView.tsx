@@ -1,14 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
-import type { WorkType } from '../types';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useLiveQuery } from 'dexie-react-hooks';
+import type { CalendarBlock, Category, Project, Task, WorkType } from '../types';
+import { db } from '../db/database';
+import { createCalendarBlock, updateCalendarBlock, deleteCalendarBlock } from '../db/crud';
+import { snapToSlot } from '../utils/calendar';
 
-// ── Constants ───────────────────────────────────────────────────────────────
+// ── Constants ────────────────────────────────────────────────────────────────
 
 const SLOT_HEIGHT = 20; // px per 15-min interval
-const GRID_START_MIN = 0; // 00:00 midnight
-const GRID_END_MIN = 24 * 60; // 24:00 midnight
+const GRID_START_MIN = 0;
+const GRID_END_MIN = 24 * 60;
 const TOTAL_SLOTS = (GRID_END_MIN - GRID_START_MIN) / 15; // 96
 const TOTAL_HEIGHT = TOTAL_SLOTS * SLOT_HEIGHT; // 1920px
-const GRID_TOP_PADDING = 8; // px — prevents first label being clipped by container edge
+const GRID_TOP_PADDING = 8;
+const LONG_PRESS_DELAY = 500; // ms
 
 const BREAK_START = '13:00';
 const BREAK_END = '14:15';
@@ -25,26 +30,15 @@ const BLOCK_COLORS: Record<WorkType, string> = {
   active_break: 'bg-amber-300 border-l-2 border-amber-500 text-amber-900',
 };
 
-const HOUR_MARKS = Array.from({ length: 24 }, (_, i) => i); // 0..23
-
-// Static options for the scheduling dialog
-const DIALOG_CATEGORIES = ['Engineering', 'Admin', 'Personal'] as const;
-type DialogCategory = (typeof DIALOG_CATEGORIES)[number];
-
-const DIALOG_PROJECTS: Record<DialogCategory, string[]> = {
-  Engineering: ['Backend API', 'Frontend Dashboard'],
-  Admin: ['Management'],
-  Personal: ['Learning'],
+const BLOCK_DROP_COLORS: Record<WorkType, string> = {
+  deep: 'border-indigo-500 bg-indigo-100/50 dark:bg-indigo-900/30',
+  shallow: 'border-emerald-500 bg-emerald-100/50 dark:bg-emerald-900/30',
+  active_break: 'border-amber-500 bg-amber-100/50 dark:bg-amber-900/30',
 };
 
-const DIALOG_TASKS: Record<string, string[]> = {
-  'Backend API': ['System architecture review', 'Write unit tests', 'Performance optimization', 'Code review'],
-  'Frontend Dashboard': ['UI component library', 'Dashboard widgets', 'Responsive layout'],
-  'Management': ['Weekly standup notes', 'Sprint planning', 'Budget review'],
-  'Learning': ['Read design patterns book', 'Complete TypeScript course'],
-};
+const HOUR_MARKS = Array.from({ length: 24 }, (_, i) => i);
 
-// ── Utilities ───────────────────────────────────────────────────────────────
+// ── Utilities ────────────────────────────────────────────────────────────────
 
 function timeToMinutes(time: string): number {
   const [h, m] = time.split(':').map(Number);
@@ -106,91 +100,113 @@ function formatWeekLabel(days: ReturnType<typeof getWeekDays>): string {
   return `${first.dayNum} – ${last.dayNum} ${first.month} ${first.year}`;
 }
 
-// Precomputed break band positions
 const BREAK_TOP_Y = timeToY(BREAK_START);
 const BREAK_HEIGHT = timeToY(BREAK_END) - BREAK_TOP_Y;
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-interface MockBlock {
-  id: number;
-  date: string;
-  startTime: string;
-  endTime: string;
-  workType: WorkType;
-  taskTitle: string;
-  category: string;
-  project: string;
-}
-
 interface DialogState {
   mode: 'create' | 'edit';
   date: string;
   workType: WorkType;
-  category: string;
-  project: string;
-  taskTitle: string;
+  categoryId: number | null;
+  projectId: number | null;
+  taskId: number | null;
   startTime: string;
   endTime: string;
   blockId?: number;
 }
 
-// ── Block Dialog ─────────────────────────────────────────────────────────────
+interface DropTarget {
+  blockId: number;
+  workType: WorkType;
+  date: string;
+  startMin: number;
+  endMin: number;
+}
+
+interface DragInfo {
+  block: CalendarBlock;
+  columnRects: { date: string; left: number; right: number }[];
+  gridTopViewport: number;
+  scrollTopAtStart: number;
+}
+
+// ── Style constants ──────────────────────────────────────────────────────────
 
 const BTN_BASE = 'px-3 py-1.5 rounded-md text-sm font-medium transition-colors border';
 const BTN_ON = 'bg-indigo-600 border-indigo-600 text-white';
 const BTN_OFF =
   'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700';
 
+// ── Block Dialog ─────────────────────────────────────────────────────────────
+
+interface BlockDialogProps {
+  state: DialogState;
+  onClose: () => void;
+  onChange: (changes: Partial<DialogState>) => void;
+  onSave: () => void;
+  onDelete?: () => void;
+  onCreateTask: () => void;
+  categories: Category[];
+  projects: Project[];
+  tasks: Task[];
+}
+
 function BlockDialog({
   state,
   onClose,
   onChange,
+  onSave,
+  onDelete,
   onCreateTask,
-}: {
-  state: DialogState;
-  onClose: () => void;
-  onChange: (changes: Partial<DialogState>) => void;
-  onCreateTask: () => void;
-}) {
+  categories,
+  projects,
+  tasks,
+}: BlockDialogProps) {
   function adjustTime(field: 'startTime' | 'endTime', delta: number) {
     const startMin = timeToMinutes(state.startTime);
     const endMin = timeToMinutes(state.endTime);
     if (field === 'startTime') {
       const next = Math.max(GRID_START_MIN, Math.min(endMin - 15, startMin + delta));
-      onChange({ startTime: minutesToTime(next) });
+      onChange({ startTime: minutesToTime(snapToSlot(next)) });
     } else {
       const next = Math.max(startMin + 15, Math.min(GRID_END_MIN, endMin + delta));
-      onChange({ endTime: minutesToTime(next) });
+      onChange({ endTime: minutesToTime(snapToSlot(next)) });
     }
   }
 
   function handleWorkTypeChange(wt: WorkType) {
     if (wt === 'active_break') {
-      onChange({ workType: wt, category: '', project: '', taskTitle: '' });
+      onChange({ workType: wt, categoryId: null, projectId: null, taskId: null });
     } else if (state.workType === 'active_break') {
-      const cat = DIALOG_CATEGORIES[0];
-      const proj = (DIALOG_PROJECTS[cat] ?? [])[0] ?? '';
-      const task = (DIALOG_TASKS[proj] ?? [])[0] ?? '';
-      onChange({ workType: wt, category: cat, project: proj, taskTitle: task });
+      const firstCat = categories[0];
+      const firstProj = firstCat ? projects.find(p => p.categoryId === firstCat.id) : null;
+      const firstTask = firstProj ? tasks.find(t => t.projectId === firstProj.id) : null;
+      onChange({
+        workType: wt,
+        categoryId: firstCat?.id ?? null,
+        projectId: firstProj?.id ?? null,
+        taskId: firstTask?.id ?? null,
+      });
     } else {
       onChange({ workType: wt });
     }
   }
 
-  function handleCategoryChange(cat: string) {
-    const proj = (DIALOG_PROJECTS[cat as DialogCategory] ?? [])[0] ?? '';
-    const task = (DIALOG_TASKS[proj] ?? [])[0] ?? '';
-    onChange({ category: cat, project: proj, taskTitle: task });
+  function handleCategoryChange(catId: number) {
+    const firstProj = projects.find(p => p.categoryId === catId);
+    const firstTask = firstProj ? tasks.find(t => t.projectId === firstProj.id) : null;
+    onChange({ categoryId: catId, projectId: firstProj?.id ?? null, taskId: firstTask?.id ?? null });
   }
 
-  function handleProjectChange(proj: string) {
-    const task = (DIALOG_TASKS[proj] ?? [])[0] ?? '';
-    onChange({ project: proj, taskTitle: task });
+  function handleProjectChange(projId: number) {
+    const firstTask = tasks.find(t => t.projectId === projId);
+    onChange({ projectId: projId, taskId: firstTask?.id ?? null });
   }
 
-  const categoryProjects = DIALOG_PROJECTS[state.category as DialogCategory] ?? [];
-  const projectTasks = DIALOG_TASKS[state.project] ?? [];
+  const filteredProjects = projects.filter(p => p.categoryId === state.categoryId);
+  const filteredTasks = tasks.filter(t => t.projectId === state.projectId);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -232,56 +248,67 @@ function BlockDialog({
           {/* Task selectors — deep/shallow only */}
           {state.workType !== 'active_break' && (
             <>
-              <div>
-                <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Category</p>
-                <div className="flex flex-wrap gap-2">
-                  {DIALOG_CATEGORIES.map(cat => (
-                    <button
-                      key={cat}
-                      onClick={() => handleCategoryChange(cat)}
-                      className={`${BTN_BASE} ${state.category === cat ? BTN_ON : BTN_OFF}`}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {categoryProjects.length > 0 && (
+              {/* Category */}
+              {categories.length > 0 && (
                 <div>
-                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Project</p>
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Category</p>
                   <div className="flex flex-wrap gap-2">
-                    {categoryProjects.map(proj => (
+                    {categories.map(cat => (
                       <button
-                        key={proj}
-                        onClick={() => handleProjectChange(proj)}
-                        className={`${BTN_BASE} ${state.project === proj ? BTN_ON : BTN_OFF}`}
+                        key={cat.id}
+                        onClick={() => handleCategoryChange(cat.id)}
+                        className={`${BTN_BASE} ${state.categoryId === cat.id ? BTN_ON : BTN_OFF}`}
                       >
-                        {proj}
+                        {cat.name}
                       </button>
                     ))}
                   </div>
                 </div>
               )}
 
-              {projectTasks.length > 0 && (
+              {/* Project */}
+              {filteredProjects.length > 0 && (
                 <div>
-                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Task</p>
-                  <div className="flex flex-col gap-1.5">
-                    {projectTasks.map(task => (
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Project</p>
+                  <div className="flex flex-wrap gap-2">
+                    {filteredProjects.map(proj => (
                       <button
-                        key={task}
-                        onClick={() => onChange({ taskTitle: task })}
-                        className={`text-left px-3 py-2 rounded-md text-sm border transition-colors ${
-                          state.taskTitle === task ? BTN_ON : BTN_OFF
-                        }`}
+                        key={proj.id}
+                        onClick={() => handleProjectChange(proj.id)}
+                        className={`${BTN_BASE} ${state.projectId === proj.id ? BTN_ON : BTN_OFF}`}
                       >
-                        {task}
+                        {proj.name}
                       </button>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Task */}
+              {state.projectId !== null && (
+                <div>
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Task</p>
+                  {filteredTasks.length > 0 ? (
+                    <div className="flex flex-col gap-1.5">
+                      {filteredTasks.map(task => (
+                        <button
+                          key={task.id}
+                          onClick={() => onChange({ taskId: task.id })}
+                          className={`text-left px-3 py-2 rounded-md text-sm border transition-colors ${
+                            state.taskId === task.id ? BTN_ON : BTN_OFF
+                          }`}
+                        >
+                          {task.title}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-400 dark:text-gray-500 py-1">
+                      No active tasks in this project.
+                    </p>
+                  )}
                   <button
-                    onClick={() => { onClose(); onCreateTask(); }}
+                    onClick={onCreateTask}
                     className="mt-2 text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
                   >
                     + Create New Task
@@ -322,8 +349,11 @@ function BlockDialog({
 
         {/* Footer */}
         <div className="px-5 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center gap-2 flex-shrink-0">
-          {state.mode === 'edit' && (
-            <button className="min-h-[36px] px-3 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+          {onDelete && (
+            <button
+              onClick={onDelete}
+              className="min-h-[36px] px-3 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+            >
               Delete
             </button>
           )}
@@ -334,7 +364,10 @@ function BlockDialog({
             >
               Cancel
             </button>
-            <button className="min-h-[36px] px-4 rounded-lg text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white transition-colors">
+            <button
+              onClick={onSave}
+              className="min-h-[36px] px-4 rounded-lg text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white transition-colors"
+            >
               Save
             </button>
           </div>
@@ -346,23 +379,44 @@ function BlockDialog({
 
 // ── CalendarView ─────────────────────────────────────────────────────────────
 
-export function CalendarView({ onCreateTask }: { onCreateTask: () => void }) {
+interface CalendarViewProps {
+  categories: Category[];
+  projects: Project[];
+  tasks: Task[];
+  onCreateTask: (preset?: { categoryId: number; projectId: number }) => void;
+}
+
+export function CalendarView({ categories, projects, tasks, onCreateTask }: CalendarViewProps) {
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);
+  const [draggingBlockId, setDraggingBlockId] = useState<number | null>(null);
+  const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
+
   const scrollRef = useRef<HTMLDivElement>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+  const dayColumnRefs = useRef<(HTMLDivElement | null)[]>([null, null, null, null, null]);
+  const isDraggingRef = useRef(false);
+  const dragInfoRef = useRef<DragInfo | null>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const blockBeingPressedRef = useRef<CalendarBlock | null>(null);
+  const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
+  // Stores pending dialog state when "Create New Task" is clicked mid-schedule
+  const pendingDialogRef = useRef<Omit<DialogState, 'taskId' | 'blockId'> | null>(null);
+  const prevTaskIdsRef = useRef<Set<number> | null>(null);
 
   const days = getWeekDays(weekOffset);
   const today = formatLocalDate(new Date());
   const isCurrentWeek = weekOffset === 0;
 
-  const mockBlocks: MockBlock[] = [
-    { id: 1, date: days[0].date, startTime: '09:15', endTime: '10:30', workType: 'deep', taskTitle: 'System architecture review', category: 'Engineering', project: 'Backend API' },
-    { id: 2, date: days[0].date, startTime: '10:30', endTime: '11:30', workType: 'shallow', taskTitle: 'Review PRs and respond', category: 'Engineering', project: 'Backend API' },
-    { id: 3, date: days[1].date, startTime: '09:15', endTime: '11:45', workType: 'deep', taskTitle: 'Write unit tests', category: 'Engineering', project: 'Frontend Dashboard' },
-    { id: 4, date: days[2].date, startTime: '14:15', endTime: '16:00', workType: 'deep', taskTitle: 'Performance optimization', category: 'Engineering', project: 'Backend API' },
-    { id: 5, date: days[3].date, startTime: '09:15', endTime: '10:00', workType: 'shallow', taskTitle: 'Weekly standup notes', category: 'Admin', project: 'Management' },
-    { id: 6, date: days[4].date, startTime: '15:00', endTime: '17:00', workType: 'deep', taskTitle: 'Sprint planning document', category: 'Admin', project: 'Management' },
-  ];
+  // Live query: blocks for the current week
+  const weekBlocks = useLiveQuery(
+    () => db.calendarBlocks.where('date').between(days[0].date, days[4].date, true, true).toArray(),
+    [days[0].date],
+  ) ?? [];
+
+  // Lookup maps
+  const taskMap = useMemo(() => new Map(tasks.map(t => [t.id, t])), [tasks]);
+  const projectMap = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
 
   // Current time indicator
   const now = new Date();
@@ -370,7 +424,7 @@ export function CalendarView({ onCreateTask }: { onCreateTask: () => void }) {
   const showCurrentTime = nowMin >= GRID_START_MIN && nowMin <= GRID_END_MIN;
   const currentTimeY = ((nowMin - GRID_START_MIN) / 15) * SLOT_HEIGHT;
 
-  // Scroll to current time (or 9:00) on mount
+  // Scroll to current time on mount
   useEffect(() => {
     if (scrollRef.current) {
       const target = showCurrentTime ? Math.max(0, currentTimeY - 120) : 0;
@@ -378,41 +432,242 @@ export function CalendarView({ onCreateTask }: { onCreateTask: () => void }) {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Prevent container scroll while dragging on touch devices
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    function onTouchMove(e: TouchEvent) {
+      if (isDraggingRef.current) e.preventDefault();
+    }
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    return () => el.removeEventListener('touchmove', onTouchMove);
+  }, []);
+
+  // Re-open scheduling dialog when a task is created via "+ Create New Task"
+  useEffect(() => {
+    const currentIds = new Set(tasks.map(t => t.id));
+    if (prevTaskIdsRef.current === null) {
+      prevTaskIdsRef.current = currentIds;
+      return;
+    }
+    if (pendingDialogRef.current) {
+      const newTasks = tasks.filter(t => !prevTaskIdsRef.current!.has(t.id));
+      if (newTasks.length > 0) {
+        const pending = pendingDialogRef.current;
+        const match =
+          newTasks
+            .filter(t => pending.projectId === null || t.projectId === pending.projectId)
+            .sort((a, b) => b.createdAt - a.createdAt)[0] ??
+          newTasks[newTasks.length - 1];
+        setDialog({ ...pending, taskId: match.id });
+        pendingDialogRef.current = null;
+      }
+    }
+    prevTaskIdsRef.current = currentIds;
+  }, [tasks]);
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
+  function getBlockLabel(block: CalendarBlock): string {
+    if (block.workType === 'active_break') return 'Active Break';
+    if (block.taskId == null) return WORK_TYPE_LABELS[block.workType];
+    return taskMap.get(block.taskId)?.title ?? 'Unknown Task';
+  }
+
+  // ── Dialog actions ────────────────────────────────────────────────────────
+
   function openCreate(date: string, startTime: string) {
     const startMin = timeToMinutes(startTime);
     const endMin = Math.min(GRID_END_MIN, startMin + 30);
-    const cat = DIALOG_CATEGORIES[0];
-    const proj = (DIALOG_PROJECTS[cat] ?? [])[0] ?? '';
-    const task = (DIALOG_TASKS[proj] ?? [])[0] ?? '';
+    const firstCat = categories[0];
+    const firstProj = firstCat ? projects.find(p => p.categoryId === firstCat.id) : null;
+    const firstTask = firstProj ? tasks.find(t => t.projectId === firstProj.id) : null;
     setDialog({
       mode: 'create',
       date,
       workType: 'deep',
-      category: cat,
-      project: proj,
-      taskTitle: task,
+      categoryId: firstCat?.id ?? null,
+      projectId: firstProj?.id ?? null,
+      taskId: firstTask?.id ?? null,
       startTime,
       endTime: minutesToTime(endMin),
     });
   }
 
-  function openEdit(block: MockBlock) {
+  function openEdit(block: CalendarBlock) {
+    const task = block.taskId != null ? taskMap.get(block.taskId) : null;
+    const proj = task ? projectMap.get(task.projectId) : null;
+    const cat = proj ? categories.find(c => c.id === proj.categoryId) : null;
     setDialog({
       mode: 'edit',
       date: block.date,
       workType: block.workType,
-      category: block.category,
-      project: block.project,
-      taskTitle: block.taskTitle,
+      categoryId: cat?.id ?? null,
+      projectId: proj?.id ?? null,
+      taskId: block.taskId,
       startTime: block.startTime,
       endTime: block.endTime,
       blockId: block.id,
     });
   }
 
+  async function handleDialogSave() {
+    if (!dialog) return;
+    const blockData = {
+      taskId: dialog.workType === 'active_break' ? null : (dialog.taskId ?? null),
+      workType: dialog.workType,
+      date: dialog.date,
+      startTime: dialog.startTime,
+      endTime: dialog.endTime,
+    };
+    if (dialog.mode === 'create') {
+      await createCalendarBlock(blockData);
+    } else if (dialog.blockId !== undefined) {
+      await updateCalendarBlock(dialog.blockId, blockData);
+    }
+    setDialog(null);
+  }
+
+  async function handleDialogDelete() {
+    if (dialog?.blockId === undefined) return;
+    await deleteCalendarBlock(dialog.blockId);
+    setDialog(null);
+  }
+
+  function handleCreateNewTask() {
+    if (!dialog) return;
+    pendingDialogRef.current = {
+      mode: 'create',
+      date: dialog.date,
+      workType: dialog.workType,
+      categoryId: dialog.categoryId,
+      projectId: dialog.projectId,
+      startTime: dialog.startTime,
+      endTime: dialog.endTime,
+    };
+    setDialog(null);
+    onCreateTask(
+      dialog.categoryId !== null && dialog.projectId !== null
+        ? { categoryId: dialog.categoryId, projectId: dialog.projectId }
+        : undefined,
+    );
+  }
+
+  // ── Drag handlers ─────────────────────────────────────────────────────────
+
+  function cancelLongPress() {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }
+
+  function endDrag() {
+    isDraggingRef.current = false;
+    dragInfoRef.current = null;
+    setDraggingBlockId(null);
+    setDropTarget(null);
+  }
+
+  function handleBlockPointerDown(e: React.PointerEvent, block: CalendarBlock) {
+    e.stopPropagation();
+    (e.currentTarget as Element).setPointerCapture(e.pointerId);
+    blockBeingPressedRef.current = block;
+    pointerStartRef.current = { x: e.clientX, y: e.clientY };
+
+    longPressTimerRef.current = setTimeout(() => {
+      longPressTimerRef.current = null;
+      const b = blockBeingPressedRef.current;
+      if (!b) return;
+
+      const columnRects = dayColumnRefs.current.map((ref, i) => {
+        const r = ref?.getBoundingClientRect();
+        return { date: days[i].date, left: r?.left ?? 0, right: r?.right ?? 0 };
+      });
+      const gridRect = gridRef.current?.getBoundingClientRect();
+
+      dragInfoRef.current = {
+        block: b,
+        columnRects,
+        gridTopViewport: gridRect?.top ?? 0,
+        scrollTopAtStart: scrollRef.current?.scrollTop ?? 0,
+      };
+      isDraggingRef.current = true;
+      setDraggingBlockId(b.id);
+      setDropTarget({
+        blockId: b.id!,
+        workType: b.workType,
+        date: b.date,
+        startMin: timeToMinutes(b.startTime),
+        endMin: timeToMinutes(b.endTime),
+      });
+    }, LONG_PRESS_DELAY);
+  }
+
+  function handleBlockPointerMove(e: React.PointerEvent) {
+    if (longPressTimerRef.current && pointerStartRef.current) {
+      const dx = Math.abs(e.clientX - pointerStartRef.current.x);
+      const dy = Math.abs(e.clientY - pointerStartRef.current.y);
+      if (dx > 10 || dy > 10) {
+        cancelLongPress();
+        blockBeingPressedRef.current = null;
+      }
+      return;
+    }
+
+    if (!isDraggingRef.current || !dragInfoRef.current) return;
+
+    const { block, columnRects, gridTopViewport, scrollTopAtStart } = dragInfoRef.current;
+    const duration = timeToMinutes(block.endTime) - timeToMinutes(block.startTime);
+
+    const colIndex = columnRects.findIndex(c => e.clientX >= c.left && e.clientX <= c.right);
+    const targetDate = colIndex >= 0 ? columnRects[colIndex].date : block.date;
+
+    const yInGrid = e.clientY - gridTopViewport + scrollTopAtStart - GRID_TOP_PADDING;
+    const slotIndex = Math.max(0, Math.min(TOTAL_SLOTS - 1, Math.floor(yInGrid / SLOT_HEIGHT)));
+    const startMin = snapToSlot(GRID_START_MIN + slotIndex * 15);
+    const endMin = Math.min(GRID_END_MIN, startMin + duration);
+
+    setDropTarget({ blockId: block.id!, workType: block.workType, date: targetDate, startMin, endMin });
+  }
+
+  function handleBlockPointerUp() {
+    const pressedBlock = blockBeingPressedRef.current;
+
+    if (longPressTimerRef.current) {
+      // Tap — open edit dialog
+      cancelLongPress();
+      blockBeingPressedRef.current = null;
+      pointerStartRef.current = null;
+      if (pressedBlock) openEdit(pressedBlock);
+      return;
+    }
+
+    if (isDraggingRef.current && dragInfoRef.current && dropTarget) {
+      const { block } = dragInfoRef.current;
+      updateCalendarBlock(block.id!, {
+        date: dropTarget.date,
+        startTime: minutesToTime(dropTarget.startMin),
+        endTime: minutesToTime(dropTarget.endMin),
+      }).catch(console.error);
+    }
+
+    endDrag();
+    blockBeingPressedRef.current = null;
+    pointerStartRef.current = null;
+  }
+
+  function handleBlockPointerCancel() {
+    cancelLongPress();
+    endDrag();
+    blockBeingPressedRef.current = null;
+    pointerStartRef.current = null;
+  }
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
   return (
     <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-      {/* Single scrollable container — header sticks within it */}
       <div ref={scrollRef} className="flex-1 overflow-auto">
         <div style={{ minWidth: '600px' }}>
           {/* Sticky header — week nav + day labels */}
@@ -452,30 +707,38 @@ export function CalendarView({ onCreateTask }: { onCreateTask: () => void }) {
 
             {/* Day labels */}
             <div className="flex">
-            <div className="w-14 flex-shrink-0 border-r border-gray-200 dark:border-gray-700" />
-            {days.map(day => {
-              const isToday = day.date === today;
-              return (
-                <div
-                  key={day.date}
-                  className={`flex-1 py-2 text-center border-l border-gray-200 dark:border-gray-700 ${
-                    isToday ? 'bg-indigo-50 dark:bg-indigo-900/20' : ''
-                  }`}
-                >
-                  <div className={`text-xs font-medium ${isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400'}`}>
-                    {day.dayName}
+              <div className="w-14 flex-shrink-0 border-r border-gray-200 dark:border-gray-700" />
+              {days.map(day => {
+                const isToday = day.date === today;
+                return (
+                  <div
+                    key={day.date}
+                    className={`flex-1 py-2 text-center border-l border-gray-200 dark:border-gray-700 ${
+                      isToday ? 'bg-indigo-50 dark:bg-indigo-900/20' : ''
+                    }`}
+                  >
+                    <div
+                      className={`text-xs font-medium ${
+                        isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400'
+                      }`}
+                    >
+                      {day.dayName}
+                    </div>
+                    <div
+                      className={`text-sm font-semibold ${
+                        isToday ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-900 dark:text-gray-100'
+                      }`}
+                    >
+                      {day.dayNum}
+                    </div>
                   </div>
-                  <div className={`text-sm font-semibold ${isToday ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-900 dark:text-gray-100'}`}>
-                    {day.dayNum}
-                  </div>
-                </div>
-              );
-            })}
-            </div>{/* end day labels row */}
-          </div>{/* end sticky header */}
+                );
+              })}
+            </div>
+          </div>
 
           {/* Time grid */}
-          <div className="flex" style={{ height: TOTAL_HEIGHT + GRID_TOP_PADDING }}>
+          <div ref={gridRef} className="flex" style={{ height: TOTAL_HEIGHT + GRID_TOP_PADDING }}>
             {/* Time label column */}
             <div className="w-14 flex-shrink-0 relative border-r border-gray-200 dark:border-gray-700">
               {HOUR_MARKS.map(h => (
@@ -490,18 +753,19 @@ export function CalendarView({ onCreateTask }: { onCreateTask: () => void }) {
             </div>
 
             {/* Day columns */}
-            {days.map(day => {
+            {days.map((day, colIdx) => {
               const isToday = day.date === today;
-              const blocksForDay = mockBlocks.filter(b => b.date === day.date);
+              const blocksForDay = weekBlocks.filter(b => b.date === day.date);
 
               return (
                 <div
                   key={day.date}
+                  ref={el => { dayColumnRefs.current[colIdx] = el; }}
                   className={`flex-1 relative border-l border-gray-200 dark:border-gray-700 ${
                     isToday ? 'bg-indigo-50/20 dark:bg-indigo-900/5' : ''
                   }`}
                 >
-                  {/* Grid lines — every 15 min; hour marks are darker */}
+                  {/* Grid lines — hour / half-hour / 15-min tiers */}
                   {Array.from({ length: TOTAL_SLOTS }, (_, slot) => {
                     const minFromStart = slot * 15;
                     const isHour = minFromStart % 60 === 0;
@@ -533,24 +797,47 @@ export function CalendarView({ onCreateTask }: { onCreateTask: () => void }) {
                       key={slot}
                       className="absolute left-0 right-0 cursor-pointer hover:bg-indigo-50/60 dark:hover:bg-indigo-900/15 transition-colors"
                       style={{ top: GRID_TOP_PADDING + slot * SLOT_HEIGHT, height: SLOT_HEIGHT }}
-                      onClick={() => openCreate(day.date, minutesToTime(GRID_START_MIN + slot * 15))}
+                      onClick={
+                        draggingBlockId === null
+                          ? () => openCreate(day.date, minutesToTime(GRID_START_MIN + slot * 15))
+                          : undefined
+                      }
                     />
                   ))}
+
+                  {/* Drop target indicator while dragging */}
+                  {dropTarget && dropTarget.date === day.date && (
+                    <div
+                      className={`absolute left-0.5 right-0.5 rounded border-2 border-dashed ${BLOCK_DROP_COLORS[dropTarget.workType]} pointer-events-none z-10`}
+                      style={{
+                        top: GRID_TOP_PADDING + timeToY(minutesToTime(dropTarget.startMin)) + 1,
+                        height:
+                          timeToY(minutesToTime(dropTarget.endMin)) -
+                          timeToY(minutesToTime(dropTarget.startMin)) -
+                          2,
+                      }}
+                    />
+                  )}
 
                   {/* Calendar blocks */}
                   {blocksForDay.map(block => {
                     const topY = GRID_TOP_PADDING + timeToY(block.startTime);
-                    const height = timeToY(block.endTime) - timeToY(block.startTime);
+                    const blockHeight = timeToY(block.endTime) - timeToY(block.startTime);
+                    const label = getBlockLabel(block);
+                    const isDragged = block.id === draggingBlockId;
                     return (
                       <div
                         key={block.id}
-                        onClick={e => { e.stopPropagation(); openEdit(block); }}
-                        className={`absolute left-0.5 right-0.5 rounded overflow-hidden cursor-pointer z-10 ${BLOCK_COLORS[block.workType]}`}
-                        style={{ top: topY + 1, height: height - 2 }}
+                        onPointerDown={e => handleBlockPointerDown(e, block)}
+                        onPointerMove={handleBlockPointerMove}
+                        onPointerUp={handleBlockPointerUp}
+                        onPointerCancel={handleBlockPointerCancel}
+                        className={`absolute left-0.5 right-0.5 rounded overflow-hidden cursor-pointer z-10 select-none touch-none ${BLOCK_COLORS[block.workType]} ${isDragged ? 'opacity-40' : ''}`}
+                        style={{ top: topY + 1, height: blockHeight - 2 }}
                       >
                         <div className="px-1.5 py-0.5">
-                          <div className="text-[11px] font-medium leading-tight truncate">{block.taskTitle}</div>
-                          {height >= 40 && (
+                          <div className="text-[11px] font-medium leading-tight truncate">{label}</div>
+                          {blockHeight >= 40 && (
                             <div className="text-[10px] opacity-70 leading-tight tabular-nums">
                               {block.startTime}–{block.endTime}
                             </div>
@@ -577,13 +864,18 @@ export function CalendarView({ onCreateTask }: { onCreateTask: () => void }) {
         </div>
       </div>
 
-      {/* Scheduling dialog */}
+      {/* Scheduling / edit dialog */}
       {dialog && (
         <BlockDialog
           state={dialog}
           onClose={() => setDialog(null)}
           onChange={changes => setDialog(prev => (prev ? { ...prev, ...changes } : prev))}
-          onCreateTask={onCreateTask}
+          onSave={handleDialogSave}
+          onDelete={dialog.mode === 'edit' ? handleDialogDelete : undefined}
+          onCreateTask={handleCreateNewTask}
+          categories={categories}
+          projects={projects}
+          tasks={tasks}
         />
       )}
     </div>
