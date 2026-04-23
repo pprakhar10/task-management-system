@@ -637,7 +637,7 @@ export function CalendarView({ categories, projects, tasks, onCreateTask }: Cale
 
                   {/* Active break band */}
                   <div
-                    className="absolute left-0 right-0 bg-amber-50 dark:bg-amber-900/10 pointer-events-none"
+                    className="absolute left-0 right-0 bg-amber-50 dark:bg-amber-700/20 pointer-events-none"
                     style={{ top: GRID_TOP_PADDING + BREAK_TOP_Y, height: BREAK_HEIGHT }}
                   />
 
