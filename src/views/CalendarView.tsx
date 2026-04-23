@@ -13,7 +13,6 @@ const GRID_END_MIN = 24 * 60;
 const TOTAL_SLOTS = (GRID_END_MIN - GRID_START_MIN) / 15; // 96
 const TOTAL_HEIGHT = TOTAL_SLOTS * SLOT_HEIGHT; // 1920px
 const GRID_TOP_PADDING = 8;
-const LONG_PRESS_DELAY = 500; // ms
 
 const BREAK_START = '13:00';
 const BREAK_END = '14:15';
@@ -28,12 +27,6 @@ const BLOCK_COLORS: Record<WorkType, string> = {
   deep: 'bg-indigo-500 border-l-2 border-indigo-700 text-white',
   shallow: 'bg-emerald-500 border-l-2 border-emerald-700 text-white',
   active_break: 'bg-amber-300 border-l-2 border-amber-500 text-amber-900',
-};
-
-const BLOCK_DROP_COLORS: Record<WorkType, string> = {
-  deep: 'border-indigo-500 bg-indigo-100/50 dark:bg-indigo-900/30',
-  shallow: 'border-emerald-500 bg-emerald-100/50 dark:bg-emerald-900/30',
-  active_break: 'border-amber-500 bg-amber-100/50 dark:bg-amber-900/30',
 };
 
 const HOUR_MARKS = Array.from({ length: 24 }, (_, i) => i);
@@ -117,21 +110,6 @@ interface DialogState {
   blockId?: number;
 }
 
-interface DropTarget {
-  blockId: number;
-  workType: WorkType;
-  date: string;
-  startMin: number;
-  endMin: number;
-}
-
-interface DragInfo {
-  block: CalendarBlock;
-  columnRects: { date: string; left: number; right: number }[];
-  gridTopViewport: number;
-  scrollTopAtStart: number;
-}
-
 // ── Style constants ──────────────────────────────────────────────────────────
 
 const BTN_BASE = 'px-3 py-1.5 rounded-md text-sm font-medium transition-colors border';
@@ -176,33 +154,40 @@ function BlockDialog({
     }
   }
 
-  function handleWorkTypeChange(wt: WorkType) {
-    if (wt === 'active_break') {
-      onChange({ workType: wt, categoryId: null, projectId: null, taskId: null });
-    } else if (state.workType === 'active_break') {
+  function handleActiveBreakToggle() {
+    if (state.workType === 'active_break') {
       const firstCat = categories[0];
       const firstProj = firstCat ? projects.find(p => p.categoryId === firstCat.id) : null;
       const firstTask = firstProj ? tasks.find(t => t.projectId === firstProj.id) : null;
       onChange({
-        workType: wt,
+        workType: firstTask?.workType ?? 'deep',
         categoryId: firstCat?.id ?? null,
         projectId: firstProj?.id ?? null,
         taskId: firstTask?.id ?? null,
       });
     } else {
-      onChange({ workType: wt });
+      onChange({ workType: 'active_break', categoryId: null, projectId: null, taskId: null });
     }
   }
 
   function handleCategoryChange(catId: number) {
     const firstProj = projects.find(p => p.categoryId === catId);
     const firstTask = firstProj ? tasks.find(t => t.projectId === firstProj.id) : null;
-    onChange({ categoryId: catId, projectId: firstProj?.id ?? null, taskId: firstTask?.id ?? null });
+    onChange({
+      categoryId: catId,
+      projectId: firstProj?.id ?? null,
+      taskId: firstTask?.id ?? null,
+      workType: firstTask?.workType ?? state.workType,
+    });
   }
 
   function handleProjectChange(projId: number) {
     const firstTask = tasks.find(t => t.projectId === projId);
-    onChange({ projectId: projId, taskId: firstTask?.id ?? null });
+    onChange({
+      projectId: projId,
+      taskId: firstTask?.id ?? null,
+      workType: firstTask?.workType ?? state.workType,
+    });
   }
 
   const filteredProjects = projects.filter(p => p.categoryId === state.categoryId);
@@ -229,23 +214,21 @@ function BlockDialog({
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
-          {/* Work Type */}
+          {/* Active Break toggle */}
           <div>
-            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Work Type</p>
-            <div className="flex flex-wrap gap-2">
-              {(['deep', 'shallow', 'active_break'] as WorkType[]).map(wt => (
-                <button
-                  key={wt}
-                  onClick={() => handleWorkTypeChange(wt)}
-                  className={`${BTN_BASE} ${state.workType === wt ? BTN_ON : BTN_OFF}`}
-                >
-                  {WORK_TYPE_LABELS[wt]}
-                </button>
-              ))}
-            </div>
+            <button
+              onClick={handleActiveBreakToggle}
+              className={`${BTN_BASE} ${
+                state.workType === 'active_break'
+                  ? 'bg-amber-500 border-amber-500 text-white'
+                  : BTN_OFF
+              }`}
+            >
+              Active Break
+            </button>
           </div>
 
-          {/* Task selectors — deep/shallow only */}
+          {/* Task selectors — hidden when active break */}
           {state.workType !== 'active_break' && (
             <>
               {/* Category */}
@@ -293,7 +276,7 @@ function BlockDialog({
                       {filteredTasks.map(task => (
                         <button
                           key={task.id}
-                          onClick={() => onChange({ taskId: task.id })}
+                          onClick={() => onChange({ taskId: task.id, workType: task.workType })}
                           className={`text-left px-3 py-2 rounded-md text-sm border transition-colors ${
                             state.taskId === task.id ? BTN_ON : BTN_OFF
                           }`}
@@ -389,18 +372,8 @@ interface CalendarViewProps {
 export function CalendarView({ categories, projects, tasks, onCreateTask }: CalendarViewProps) {
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);
-  const [draggingBlockId, setDraggingBlockId] = useState<number | null>(null);
-  const [dropTarget, setDropTarget] = useState<DropTarget | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
-  const gridRef = useRef<HTMLDivElement>(null);
-  const dayColumnRefs = useRef<(HTMLDivElement | null)[]>([null, null, null, null, null]);
-  const isDraggingRef = useRef(false);
-  const dragInfoRef = useRef<DragInfo | null>(null);
-  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const blockBeingPressedRef = useRef<CalendarBlock | null>(null);
-  const pointerStartRef = useRef<{ x: number; y: number } | null>(null);
-  // Stores pending dialog state when "Create New Task" is clicked mid-schedule
   const pendingDialogRef = useRef<Omit<DialogState, 'taskId' | 'blockId'> | null>(null);
   const prevTaskIdsRef = useRef<Set<number> | null>(null);
 
@@ -431,17 +404,6 @@ export function CalendarView({ categories, projects, tasks, onCreateTask }: Cale
       scrollRef.current.scrollTop = target;
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Prevent container scroll while dragging on touch devices
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    function onTouchMove(e: TouchEvent) {
-      if (isDraggingRef.current) e.preventDefault();
-    }
-    el.addEventListener('touchmove', onTouchMove, { passive: false });
-    return () => el.removeEventListener('touchmove', onTouchMove);
-  }, []);
 
   // Re-open scheduling dialog when a task is created via "+ Create New Task"
   useEffect(() => {
@@ -485,7 +447,7 @@ export function CalendarView({ categories, projects, tasks, onCreateTask }: Cale
     setDialog({
       mode: 'create',
       date,
-      workType: 'deep',
+      workType: firstTask?.workType ?? 'deep',
       categoryId: firstCat?.id ?? null,
       projectId: firstProj?.id ?? null,
       taskId: firstTask?.id ?? null,
@@ -551,117 +513,6 @@ export function CalendarView({ categories, projects, tasks, onCreateTask }: Cale
         ? { categoryId: dialog.categoryId, projectId: dialog.projectId }
         : undefined,
     );
-  }
-
-  // ── Drag handlers ─────────────────────────────────────────────────────────
-
-  function cancelLongPress() {
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current);
-      longPressTimerRef.current = null;
-    }
-  }
-
-  function endDrag() {
-    isDraggingRef.current = false;
-    dragInfoRef.current = null;
-    setDraggingBlockId(null);
-    setDropTarget(null);
-  }
-
-  function handleBlockPointerDown(e: React.PointerEvent, block: CalendarBlock) {
-    e.stopPropagation();
-    (e.currentTarget as Element).setPointerCapture(e.pointerId);
-    blockBeingPressedRef.current = block;
-    pointerStartRef.current = { x: e.clientX, y: e.clientY };
-
-    longPressTimerRef.current = setTimeout(() => {
-      longPressTimerRef.current = null;
-      const b = blockBeingPressedRef.current;
-      if (!b) return;
-
-      const columnRects = dayColumnRefs.current.map((ref, i) => {
-        const r = ref?.getBoundingClientRect();
-        return { date: days[i].date, left: r?.left ?? 0, right: r?.right ?? 0 };
-      });
-      const gridRect = gridRef.current?.getBoundingClientRect();
-
-      dragInfoRef.current = {
-        block: b,
-        columnRects,
-        gridTopViewport: gridRect?.top ?? 0,
-        scrollTopAtStart: scrollRef.current?.scrollTop ?? 0,
-      };
-      isDraggingRef.current = true;
-      setDraggingBlockId(b.id);
-      setDropTarget({
-        blockId: b.id!,
-        workType: b.workType,
-        date: b.date,
-        startMin: timeToMinutes(b.startTime),
-        endMin: timeToMinutes(b.endTime),
-      });
-    }, LONG_PRESS_DELAY);
-  }
-
-  function handleBlockPointerMove(e: React.PointerEvent) {
-    if (longPressTimerRef.current && pointerStartRef.current) {
-      const dx = Math.abs(e.clientX - pointerStartRef.current.x);
-      const dy = Math.abs(e.clientY - pointerStartRef.current.y);
-      if (dx > 10 || dy > 10) {
-        cancelLongPress();
-        blockBeingPressedRef.current = null;
-      }
-      return;
-    }
-
-    if (!isDraggingRef.current || !dragInfoRef.current) return;
-
-    const { block, columnRects, gridTopViewport, scrollTopAtStart } = dragInfoRef.current;
-    const duration = timeToMinutes(block.endTime) - timeToMinutes(block.startTime);
-
-    const colIndex = columnRects.findIndex(c => e.clientX >= c.left && e.clientX <= c.right);
-    const targetDate = colIndex >= 0 ? columnRects[colIndex].date : block.date;
-
-    const yInGrid = e.clientY - gridTopViewport + scrollTopAtStart - GRID_TOP_PADDING;
-    const slotIndex = Math.max(0, Math.min(TOTAL_SLOTS - 1, Math.floor(yInGrid / SLOT_HEIGHT)));
-    const startMin = snapToSlot(GRID_START_MIN + slotIndex * 15);
-    const endMin = Math.min(GRID_END_MIN, startMin + duration);
-
-    setDropTarget({ blockId: block.id!, workType: block.workType, date: targetDate, startMin, endMin });
-  }
-
-  function handleBlockPointerUp() {
-    const pressedBlock = blockBeingPressedRef.current;
-
-    if (longPressTimerRef.current) {
-      // Tap — open edit dialog
-      cancelLongPress();
-      blockBeingPressedRef.current = null;
-      pointerStartRef.current = null;
-      if (pressedBlock) openEdit(pressedBlock);
-      return;
-    }
-
-    if (isDraggingRef.current && dragInfoRef.current && dropTarget) {
-      const { block } = dragInfoRef.current;
-      updateCalendarBlock(block.id!, {
-        date: dropTarget.date,
-        startTime: minutesToTime(dropTarget.startMin),
-        endTime: minutesToTime(dropTarget.endMin),
-      }).catch(console.error);
-    }
-
-    endDrag();
-    blockBeingPressedRef.current = null;
-    pointerStartRef.current = null;
-  }
-
-  function handleBlockPointerCancel() {
-    cancelLongPress();
-    endDrag();
-    blockBeingPressedRef.current = null;
-    pointerStartRef.current = null;
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -738,7 +589,7 @@ export function CalendarView({ categories, projects, tasks, onCreateTask }: Cale
           </div>
 
           {/* Time grid */}
-          <div ref={gridRef} className="flex" style={{ height: TOTAL_HEIGHT + GRID_TOP_PADDING }}>
+          <div className="flex" style={{ height: TOTAL_HEIGHT + GRID_TOP_PADDING }}>
             {/* Time label column */}
             <div className="w-14 flex-shrink-0 relative border-r border-gray-200 dark:border-gray-700">
               {HOUR_MARKS.map(h => (
@@ -753,14 +604,13 @@ export function CalendarView({ categories, projects, tasks, onCreateTask }: Cale
             </div>
 
             {/* Day columns */}
-            {days.map((day, colIdx) => {
+            {days.map(day => {
               const isToday = day.date === today;
               const blocksForDay = weekBlocks.filter(b => b.date === day.date);
 
               return (
                 <div
                   key={day.date}
-                  ref={el => { dayColumnRefs.current[colIdx] = el; }}
                   className={`flex-1 relative border-l border-gray-200 dark:border-gray-700 ${
                     isToday ? 'bg-indigo-50/20 dark:bg-indigo-900/5' : ''
                   }`}
@@ -797,42 +647,20 @@ export function CalendarView({ categories, projects, tasks, onCreateTask }: Cale
                       key={slot}
                       className="absolute left-0 right-0 cursor-pointer hover:bg-indigo-50/60 dark:hover:bg-indigo-900/15 transition-colors"
                       style={{ top: GRID_TOP_PADDING + slot * SLOT_HEIGHT, height: SLOT_HEIGHT }}
-                      onClick={
-                        draggingBlockId === null
-                          ? () => openCreate(day.date, minutesToTime(GRID_START_MIN + slot * 15))
-                          : undefined
-                      }
+                      onClick={() => openCreate(day.date, minutesToTime(GRID_START_MIN + slot * 15))}
                     />
                   ))}
-
-                  {/* Drop target indicator while dragging */}
-                  {dropTarget && dropTarget.date === day.date && (
-                    <div
-                      className={`absolute left-0.5 right-0.5 rounded border-2 border-dashed ${BLOCK_DROP_COLORS[dropTarget.workType]} pointer-events-none z-10`}
-                      style={{
-                        top: GRID_TOP_PADDING + timeToY(minutesToTime(dropTarget.startMin)) + 1,
-                        height:
-                          timeToY(minutesToTime(dropTarget.endMin)) -
-                          timeToY(minutesToTime(dropTarget.startMin)) -
-                          2,
-                      }}
-                    />
-                  )}
 
                   {/* Calendar blocks */}
                   {blocksForDay.map(block => {
                     const topY = GRID_TOP_PADDING + timeToY(block.startTime);
                     const blockHeight = timeToY(block.endTime) - timeToY(block.startTime);
                     const label = getBlockLabel(block);
-                    const isDragged = block.id === draggingBlockId;
                     return (
                       <div
                         key={block.id}
-                        onPointerDown={e => handleBlockPointerDown(e, block)}
-                        onPointerMove={handleBlockPointerMove}
-                        onPointerUp={handleBlockPointerUp}
-                        onPointerCancel={handleBlockPointerCancel}
-                        className={`absolute left-0.5 right-0.5 rounded overflow-hidden cursor-pointer z-10 select-none touch-none ${BLOCK_COLORS[block.workType]} ${isDragged ? 'opacity-40' : ''}`}
+                        onClick={e => { e.stopPropagation(); openEdit(block); }}
+                        className={`absolute left-0.5 right-0.5 rounded overflow-hidden cursor-pointer z-10 ${BLOCK_COLORS[block.workType]}`}
                         style={{ top: topY + 1, height: blockHeight - 2 }}
                       >
                         <div className="px-1.5 py-0.5">
