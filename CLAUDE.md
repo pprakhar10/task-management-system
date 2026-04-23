@@ -70,6 +70,7 @@ src/
     CurrentlyWorkingView.tsx  — tasks with status=currently_working (morning_meeting included), sorted by dueDate
     MorningMeetingView.tsx    — tasks with status=morning_meeting, sorted by dueDate
     SearchView.tsx            — search + filter view: text query, status/workType/flag/category/project filters
+    CalendarView.tsx          — full 24-hour week calendar; week nav; scheduling dialog; static mock blocks (wired in Phase 7)
   db/
     database.ts               — AppDatabase (Dexie) class + db singleton + settings seed on populate
     crud.ts                   — all CRUD: Category, Project, Task, Subtask, CalendarBlock, Settings
@@ -113,7 +114,7 @@ src/
 
 ### Build Phases
 
-**Current phase: 6 — Calendar view UI (static) (next)**
+**Current phase: 7 — Wire calendar to DB (next)**
 **Plan file:** `C:\Users\pprak\.claude\plans\staged-shimmying-wadler.md`
 
 | # | Phase | Status |
@@ -123,12 +124,24 @@ src/
 | 3 | Wire explore view to real DB | ✅ Complete |
 | 4 | Task CRUD — create/edit/delete at all levels | ✅ Complete |
 | 5 | Top nav special views — Currently Working, Morning Meeting, Search | ✅ Complete |
-| 6 | Calendar UI (static) | ⬜ |
+| 6 | Calendar UI (static) | ✅ Complete |
 | 7 | Wire calendar to DB | ⬜ |
 | 8 | Statistics page | ⬜ |
 | 9 | PDF report | ⬜ |
 | 10 | Settings + backup UI | ⬜ |
 | 11 | Polish — error states, loading states, edge cases | ⬜ |
+
+### Phase 6 — Complete
+
+- [x] Calendar grid: full 24-hour day, Mon–Fri columns, 15-min row height with visible grid lines
+- [x] Week navigation: prev/next arrows, week date range label, Today button when off current week
+- [x] Mock calendar blocks rendered in indigo (deep) / emerald (shallow) with time labels
+- [x] Active break band 13:00–14:15 rendered as amber background across all columns
+- [x] Current time indicator: red dot + line on today's column
+- [x] Click empty slot → scheduling dialog (work type, category/project/task selectors, time +/− controls)
+- [x] Click existing block → edit dialog pre-filled (includes Delete button placeholder)
+- [x] + Create New Task in dialog → closes dialog, opens SidePanel create form
+- [x] Explore view: "+ Add Task" button in sort bar when a project is selected, pre-fills category/project in SidePanel
 
 ### Phase 5 — Complete
 
