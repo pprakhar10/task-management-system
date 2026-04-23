@@ -439,7 +439,7 @@ export default function App() {
             </div>
           )}
 
-          {view === 'calendar' && <CalendarView />}
+          {view === 'calendar' && <CalendarView onCreateTask={handleOpenCreate} />}
         </main>
       </div>
 

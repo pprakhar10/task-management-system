@@ -4,10 +4,11 @@ import type { WorkType } from '../types';
 // ── Constants ───────────────────────────────────────────────────────────────
 
 const SLOT_HEIGHT = 20; // px per 15-min interval
-const GRID_START_MIN = 9 * 60; // 09:00
-const GRID_END_MIN = 18 * 60; // 18:00
-const TOTAL_SLOTS = (GRID_END_MIN - GRID_START_MIN) / 15; // 36
-const TOTAL_HEIGHT = TOTAL_SLOTS * SLOT_HEIGHT; // 720px
+const GRID_START_MIN = 8 * 60; // 08:00 — one hour buffer before work day
+const GRID_END_MIN = 19 * 60; // 19:00 — one hour buffer after work day
+const TOTAL_SLOTS = (GRID_END_MIN - GRID_START_MIN) / 15; // 44
+const TOTAL_HEIGHT = TOTAL_SLOTS * SLOT_HEIGHT; // 880px
+const GRID_TOP_PADDING = 8; // px — prevents first label being clipped by container edge
 
 const BREAK_START = '13:00';
 const BREAK_END = '14:15';
@@ -24,7 +25,7 @@ const BLOCK_COLORS: Record<WorkType, string> = {
   active_break: 'bg-amber-300 border-l-2 border-amber-500 text-amber-900',
 };
 
-const HOUR_MARKS = Array.from({ length: 10 }, (_, i) => i + 9); // 9..18
+const HOUR_MARKS = Array.from({ length: 12 }, (_, i) => i + 8); // 8..19
 
 // Static options for the scheduling dialog
 const DIALOG_CATEGORIES = ['Engineering', 'Admin', 'Personal'] as const;
@@ -70,18 +71,38 @@ function formatHour(h: number): string {
   return h < 12 ? `${h}am` : `${h - 12}pm`;
 }
 
-function getCurrentWeekDays(): { date: string; dayName: string; dayNum: number }[] {
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function getWeekDays(weekOffset: number): { date: string; dayName: string; dayNum: number; month: string; year: number }[] {
   const today = new Date();
   const dow = today.getDay(); // 0=Sun
   const mondayOffset = dow === 0 ? -6 : 1 - dow;
   const monday = new Date(today);
-  monday.setDate(today.getDate() + mondayOffset);
+  monday.setDate(today.getDate() + mondayOffset + weekOffset * 7);
   const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
   return Array.from({ length: 5 }, (_, i) => {
     const d = new Date(monday);
     d.setDate(monday.getDate() + i);
-    return { date: formatLocalDate(d), dayName: dayNames[i], dayNum: d.getDate() };
+    return {
+      date: formatLocalDate(d),
+      dayName: dayNames[i],
+      dayNum: d.getDate(),
+      month: MONTH_NAMES[d.getMonth()],
+      year: d.getFullYear(),
+    };
   });
+}
+
+function formatWeekLabel(days: ReturnType<typeof getWeekDays>): string {
+  const first = days[0];
+  const last = days[4];
+  if (first.year !== last.year) {
+    return `${first.dayNum} ${first.month} ${first.year} – ${last.dayNum} ${last.month} ${last.year}`;
+  }
+  if (first.month !== last.month) {
+    return `${first.dayNum} ${first.month} – ${last.dayNum} ${last.month} ${last.year}`;
+  }
+  return `${first.dayNum} – ${last.dayNum} ${first.month} ${first.year}`;
 }
 
 // Precomputed break band positions
@@ -124,10 +145,12 @@ function BlockDialog({
   state,
   onClose,
   onChange,
+  onCreateTask,
 }: {
   state: DialogState;
   onClose: () => void;
   onChange: (changes: Partial<DialogState>) => void;
+  onCreateTask: () => void;
 }) {
   function adjustTime(field: 'startTime' | 'endTime', delta: number) {
     const startMin = timeToMinutes(state.startTime);
@@ -256,7 +279,10 @@ function BlockDialog({
                       </button>
                     ))}
                   </div>
-                  <button className="mt-2 text-sm text-indigo-600 dark:text-indigo-400 hover:underline">
+                  <button
+                    onClick={() => { onClose(); onCreateTask(); }}
+                    className="mt-2 text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
+                  >
                     + Create New Task
                   </button>
                 </div>
@@ -319,12 +345,14 @@ function BlockDialog({
 
 // ── CalendarView ─────────────────────────────────────────────────────────────
 
-export function CalendarView() {
+export function CalendarView({ onCreateTask }: { onCreateTask: () => void }) {
   const [dialog, setDialog] = useState<DialogState | null>(null);
+  const [weekOffset, setWeekOffset] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const days = getCurrentWeekDays();
+  const days = getWeekDays(weekOffset);
   const today = formatLocalDate(new Date());
+  const isCurrentWeek = weekOffset === 0;
 
   const mockBlocks: MockBlock[] = [
     { id: 1, date: days[0].date, startTime: '09:15', endTime: '10:30', workType: 'deep', taskTitle: 'System architecture review', category: 'Engineering', project: 'Backend API' },
@@ -386,8 +414,43 @@ export function CalendarView() {
       {/* Single scrollable container — header sticks within it */}
       <div ref={scrollRef} className="flex-1 overflow-auto">
         <div style={{ minWidth: '600px' }}>
-          {/* Sticky day header */}
-          <div className="sticky top-0 z-20 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 flex">
+          {/* Sticky header — week nav + day labels */}
+          <div className="sticky top-0 z-20 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+            {/* Week navigation bar */}
+            <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-100 dark:border-gray-800">
+              <button
+                onClick={() => setWeekOffset(w => w - 1)}
+                className="min-h-[32px] min-w-[32px] flex items-center justify-center rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                aria-label="Previous week"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <span className="flex-1 text-center text-sm font-medium text-gray-700 dark:text-gray-300 tabular-nums">
+                {formatWeekLabel(days)}
+              </span>
+              <button
+                onClick={() => setWeekOffset(w => w + 1)}
+                className="min-h-[32px] min-w-[32px] flex items-center justify-center rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                aria-label="Next week"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+              {!isCurrentWeek && (
+                <button
+                  onClick={() => setWeekOffset(0)}
+                  className="min-h-[32px] px-3 rounded-lg text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 transition-colors"
+                >
+                  Today
+                </button>
+              )}
+            </div>
+
+            {/* Day labels */}
+            <div className="flex">
             <div className="w-14 flex-shrink-0 border-r border-gray-200 dark:border-gray-700" />
             {days.map(day => {
               const isToday = day.date === today;
@@ -407,17 +470,18 @@ export function CalendarView() {
                 </div>
               );
             })}
-          </div>
+            </div>{/* end day labels row */}
+          </div>{/* end sticky header */}
 
           {/* Time grid */}
-          <div className="flex" style={{ height: TOTAL_HEIGHT }}>
+          <div className="flex" style={{ height: TOTAL_HEIGHT + GRID_TOP_PADDING }}>
             {/* Time label column */}
             <div className="w-14 flex-shrink-0 relative border-r border-gray-200 dark:border-gray-700">
               {HOUR_MARKS.map(h => (
                 <div
                   key={h}
                   className="absolute right-2 text-[10px] text-gray-400 dark:text-gray-500 tabular-nums leading-none select-none"
-                  style={{ top: ((h * 60 - GRID_START_MIN) / 15) * SLOT_HEIGHT - 5 }}
+                  style={{ top: GRID_TOP_PADDING + ((h * 60 - GRID_START_MIN) / 15) * SLOT_HEIGHT - 5 }}
                 >
                   {formatHour(h)}
                 </div>
@@ -451,7 +515,7 @@ export function CalendarView() {
                             ? 'border-gray-100 dark:border-gray-800'
                             : 'border-gray-100/60 dark:border-gray-800/40'
                         }`}
-                        style={{ top: slot * SLOT_HEIGHT }}
+                        style={{ top: GRID_TOP_PADDING + slot * SLOT_HEIGHT }}
                       />
                     );
                   })}
@@ -459,7 +523,7 @@ export function CalendarView() {
                   {/* Active break band */}
                   <div
                     className="absolute left-0 right-0 bg-amber-50 dark:bg-amber-900/10 pointer-events-none"
-                    style={{ top: BREAK_TOP_Y, height: BREAK_HEIGHT }}
+                    style={{ top: GRID_TOP_PADDING + BREAK_TOP_Y, height: BREAK_HEIGHT }}
                   />
 
                   {/* Clickable 15-min slots */}
@@ -467,15 +531,15 @@ export function CalendarView() {
                     <div
                       key={slot}
                       className="absolute left-0 right-0 cursor-pointer hover:bg-indigo-50/60 dark:hover:bg-indigo-900/15 transition-colors"
-                      style={{ top: slot * SLOT_HEIGHT, height: SLOT_HEIGHT }}
+                      style={{ top: GRID_TOP_PADDING + slot * SLOT_HEIGHT, height: SLOT_HEIGHT }}
                       onClick={() => openCreate(day.date, minutesToTime(GRID_START_MIN + slot * 15))}
                     />
                   ))}
 
                   {/* Calendar blocks */}
                   {blocksForDay.map(block => {
-                    const topY = timeToY(block.startTime);
-                    const height = timeToY(block.endTime) - topY;
+                    const topY = GRID_TOP_PADDING + timeToY(block.startTime);
+                    const height = timeToY(block.endTime) - timeToY(block.startTime);
                     return (
                       <div
                         key={block.id}
@@ -499,7 +563,7 @@ export function CalendarView() {
                   {isToday && showCurrentTime && (
                     <div
                       className="absolute left-0 right-0 z-20 pointer-events-none flex items-center"
-                      style={{ top: currentTimeY }}
+                      style={{ top: GRID_TOP_PADDING + currentTimeY }}
                     >
                       <div className="w-2 h-2 rounded-full bg-red-500 -ml-1 flex-shrink-0" />
                       <div className="flex-1 border-t-2 border-red-500" />
@@ -518,6 +582,7 @@ export function CalendarView() {
           state={dialog}
           onClose={() => setDialog(null)}
           onChange={changes => setDialog(prev => (prev ? { ...prev, ...changes } : prev))}
+          onCreateTask={onCreateTask}
         />
       )}
     </div>
