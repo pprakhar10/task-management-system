@@ -18,6 +18,7 @@ interface Props {
   onAddSubtask: (taskId: number, title: string) => void;
   onUpdateSubtask: (subtaskId: number, title: string) => void;
   onDeleteSubtask: (subtaskId: number) => void;
+  onAddTask?: () => void;
 }
 
 const SORT_OPTIONS: { value: SortBy; label: string }[] = [
@@ -42,6 +43,7 @@ export function ExploreView({
   onAddSubtask,
   onUpdateSubtask,
   onDeleteSubtask,
+  onAddTask,
 }: Props) {
   const [showCompleted, setShowCompleted] = useState(false);
 
@@ -63,9 +65,20 @@ export function ExploreView({
             {opt.label}
           </button>
         ))}
-        <span className="ml-auto text-xs text-gray-400 dark:text-gray-500">
-          {tasks.length} task{tasks.length !== 1 ? 's' : ''}
-        </span>
+        <div className="ml-auto flex items-center gap-2">
+          {onAddTask && (
+            <button
+              onClick={onAddTask}
+              className="min-h-[36px] px-3 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded-lg transition-colors flex items-center gap-1"
+            >
+              <span className="text-sm leading-none">+</span>
+              Add Task
+            </button>
+          )}
+          <span className="text-xs text-gray-400 dark:text-gray-500">
+            {tasks.length} task{tasks.length !== 1 ? 's' : ''}
+          </span>
+        </div>
       </div>
 
       {/* Task list */}

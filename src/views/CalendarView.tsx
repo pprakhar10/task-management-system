@@ -4,10 +4,10 @@ import type { WorkType } from '../types';
 // ── Constants ───────────────────────────────────────────────────────────────
 
 const SLOT_HEIGHT = 20; // px per 15-min interval
-const GRID_START_MIN = 8 * 60; // 08:00 — one hour buffer before work day
-const GRID_END_MIN = 19 * 60; // 19:00 — one hour buffer after work day
-const TOTAL_SLOTS = (GRID_END_MIN - GRID_START_MIN) / 15; // 44
-const TOTAL_HEIGHT = TOTAL_SLOTS * SLOT_HEIGHT; // 880px
+const GRID_START_MIN = 0; // 00:00 midnight
+const GRID_END_MIN = 24 * 60; // 24:00 midnight
+const TOTAL_SLOTS = (GRID_END_MIN - GRID_START_MIN) / 15; // 96
+const TOTAL_HEIGHT = TOTAL_SLOTS * SLOT_HEIGHT; // 1920px
 const GRID_TOP_PADDING = 8; // px — prevents first label being clipped by container edge
 
 const BREAK_START = '13:00';
@@ -25,7 +25,7 @@ const BLOCK_COLORS: Record<WorkType, string> = {
   active_break: 'bg-amber-300 border-l-2 border-amber-500 text-amber-900',
 };
 
-const HOUR_MARKS = Array.from({ length: 12 }, (_, i) => i + 8); // 8..19
+const HOUR_MARKS = Array.from({ length: 24 }, (_, i) => i); // 0..23
 
 // Static options for the scheduling dialog
 const DIALOG_CATEGORIES = ['Engineering', 'Admin', 'Personal'] as const;
@@ -67,6 +67,7 @@ function formatLocalDate(d: Date): string {
 }
 
 function formatHour(h: number): string {
+  if (h === 0) return '12am';
   if (h === 12) return '12pm';
   return h < 12 ? `${h}am` : `${h - 12}pm`;
 }

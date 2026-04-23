@@ -379,6 +379,13 @@ export default function App() {
               onAddSubtask={(taskId, title) => handleAddSubtask(taskId, title, null)}
               onUpdateSubtask={handleUpdateSubtask}
               onDeleteSubtask={handleDeleteSubtask}
+              onAddTask={
+                selectedProjectId !== null
+                  ? () => {
+                      handleOpenCreate();
+                    }
+                  : undefined
+              }
             />
           )}
 
@@ -452,6 +459,11 @@ export default function App() {
         categories={categories}
         projects={projects}
         isOpen={isPanelOpen}
+        createPreset={
+          selectedProjectId !== null && selectedCategoryId !== null
+            ? { categoryId: selectedCategoryId, projectId: selectedProjectId }
+            : undefined
+        }
         onClose={closePanel}
         onSubtaskToggle={handleSubtaskToggle}
         onMarkComplete={() => selectedTask && handleMarkComplete(selectedTask.id)}

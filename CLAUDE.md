@@ -17,6 +17,10 @@ npx vitest        # Run tests in watch mode
 - **Live (Vercel):** https://task-management-system-khaki-seven.vercel.app
 - Vercel is connected to GitHub — every push to `master` auto-deploys.
 
+## Verification Rule
+
+**Always push to Vercel for UI verification.** Do not ask the user to check `localhost`. After every phase or visual change, push to `master` and give the Vercel URL. The user verifies on Vercel, not the dev server.
+
 ## Architecture
 
 ### Tech Stack

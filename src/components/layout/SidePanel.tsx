@@ -13,6 +13,7 @@ interface Props {
   categories: Category[];
   projects: Project[];
   isOpen: boolean;
+  createPreset?: { categoryId: number; projectId: number };
   onClose: () => void;
   onSubtaskToggle: (subtaskId: number) => void;
   onMarkComplete: () => void;
@@ -82,7 +83,7 @@ const LABEL_CLASS =
 
 export function SidePanel({
   mode, task, subtasks, projectName, categoryName, categories, projects,
-  isOpen, onClose, onSubtaskToggle, onMarkComplete, onFlagToggle, onStatusToggle,
+  isOpen, createPreset, onClose, onSubtaskToggle, onMarkComplete, onFlagToggle, onStatusToggle,
   onEdit, onCreateTask, onUpdateTask, onDeleteTask, onAddSubtask, onUpdateSubtask, onDeleteSubtask,
 }: Props) {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -114,8 +115,8 @@ export function SidePanel({
       setFormDueDate('');
       setFormWorkType('deep');
       setFormFlag(null);
-      setFormCategoryId(null);
-      setFormProjectId(null);
+      setFormCategoryId(createPreset?.categoryId ?? null);
+      setFormProjectId(createPreset?.projectId ?? null);
     } else if (mode === 'edit' && task) {
       const proj = projects.find(p => p.id === task.projectId);
       setFormTitle(task.title);
