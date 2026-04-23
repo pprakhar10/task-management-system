@@ -197,6 +197,52 @@ describe('calcWorkTypeSummary', () => {
     expect(r.deepInWindowMinutes + r.shallowInWindowMinutes + r.breakInWindowMinutes + r.unutilizedMinutes)
       .toBe(r.totalWindowMinutes);
   });
+
+  describe('with daily exclusions (standup + break)', () => {
+    // Standup 09:15–09:45 (30 min) + break 13:00–14:15 (75 min) = 105 min excluded
+    // Effective day = 525 - 105 = 420 min
+    const STANDUP = { start: '09:15', end: '09:45' };
+    const BREAK = { start: '13:00', end: '14:15' };
+    const EXCLUSIONS = [STANDUP, BREAK];
+
+    it('reduces totalWindowMinutes by excluded slots per day', () => {
+      const r = calcWorkTypeSummary([], WORK_START, WORK_END, ['2026-04-21'], EXCLUSIONS);
+      expect(r.totalWindowMinutes).toBe(420); // 525 - 30 - 75
+      expect(r.unutilizedMinutes).toBe(420);
+    });
+
+    it('blocks entirely within excluded slots do not reduce unutilized', () => {
+      const blocks: CalendarBlock[] = [
+        // Exactly covers the standup slot — should not count toward effective window
+        makeBlock({ id: 1, workType: 'active_break', startTime: '09:15', endTime: '09:45', date: '2026-04-21' }),
+      ];
+      const r = calcWorkTypeSummary(blocks, WORK_START, WORK_END, ['2026-04-21'], EXCLUSIONS);
+      expect(r.breakMinutes).toBe(30);           // raw block still counted
+      expect(r.breakInWindowMinutes).toBe(0);    // zero effective contribution
+      expect(r.unutilizedMinutes).toBe(420);     // excluded slot was already out of the window
+    });
+
+    it('blocks partially overlapping an excluded slot only count the non-excluded portion', () => {
+      const blocks: CalendarBlock[] = [
+        // 09:30–10:30: 09:30–09:45 is inside standup (15 min), 09:45–10:30 is productive (45 min)
+        makeBlock({ id: 1, workType: 'deep', startTime: '09:30', endTime: '10:30', date: '2026-04-21' }),
+      ];
+      const r = calcWorkTypeSummary(blocks, WORK_START, WORK_END, ['2026-04-21'], EXCLUSIONS);
+      expect(r.deepMinutes).toBe(60);            // raw block
+      expect(r.deepInWindowMinutes).toBe(45);    // 09:45–10:30 only
+      expect(r.unutilizedMinutes).toBe(420 - 45);
+    });
+
+    it('effective values still sum to totalWindowMinutes', () => {
+      const blocks: CalendarBlock[] = [
+        makeBlock({ id: 1, workType: 'deep', startTime: '10:00', endTime: '12:00', date: '2026-04-21' }),
+        makeBlock({ id: 2, workType: 'shallow', startTime: '15:00', endTime: '16:00', date: '2026-04-21' }),
+      ];
+      const r = calcWorkTypeSummary(blocks, WORK_START, WORK_END, ['2026-04-21'], EXCLUSIONS);
+      const utilized = r.deepInWindowMinutes + r.shallowInWindowMinutes + r.breakInWindowMinutes;
+      expect(utilized + r.unutilizedMinutes).toBe(r.totalWindowMinutes);
+    });
+  });
 });
 
 // ─── calcCategoryBreakdown ──────────────────────────────────────────────────

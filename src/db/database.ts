@@ -6,6 +6,8 @@ const DEFAULT_SETTINGS: Omit<Settings, 'id'> = {
   workDayEnd: '18:00',
   defaultBreakStart: '13:00',
   defaultBreakEnd: '14:15',
+  standupStart: '09:15',
+  standupEnd: '09:45',
   theme: 'light',
   lastBackupAt: null,
   backupReminderDays: 7,
@@ -29,6 +31,19 @@ export class AppDatabase extends Dexie {
       calendarBlocks: '++id, date, taskId',
       settings: '++id',
     });
+    this.version(2).stores({
+      categories: '++id',
+      projects: '++id, categoryId',
+      tasks: '++id, projectId, status, completed, dueDate',
+      subtasks: '++id, taskId',
+      calendarBlocks: '++id, date, taskId',
+      settings: '++id',
+    }).upgrade(tx =>
+      tx.table('settings').toCollection().modify((s: Settings) => {
+        if (s.standupStart === undefined) s.standupStart = '09:15';
+        if (s.standupEnd === undefined) s.standupEnd = '09:45';
+      }),
+    );
     this.on('populate', () => {
       this.settings.add(DEFAULT_SETTINGS as Settings);
     });

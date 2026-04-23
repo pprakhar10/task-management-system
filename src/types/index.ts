@@ -57,6 +57,8 @@ export interface Settings {
   workDayEnd: string; // HH:MM
   defaultBreakStart: string; // HH:MM
   defaultBreakEnd: string; // HH:MM
+  standupStart: string | null; // HH:MM — daily standup excluded from unutilized
+  standupEnd: string | null;   // HH:MM
   theme: Theme;
   lastBackupAt: number | null;
   backupReminderDays: number;

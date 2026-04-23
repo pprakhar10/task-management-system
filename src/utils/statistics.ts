@@ -51,6 +51,11 @@ export function weekdaysInRange(startDate: string, endDate: string): string[] {
 
 // ─── Summary ─────────────────────────────────────────────────────────────────
 
+export interface DailyExclusion {
+  start: string; // HH:MM — recurring daily slot excluded from the productive window
+  end: string;   // HH:MM
+}
+
 export interface WorkTypeSummary {
   deepMinutes: number;
   shallowMinutes: number;
@@ -59,7 +64,14 @@ export interface WorkTypeSummary {
   shallowInWindowMinutes: number;
   breakInWindowMinutes: number;
   unutilizedMinutes: number;
-  totalWindowMinutes: number;
+  totalWindowMinutes: number; // effective window (work day minus exclusions) × weekdays
+}
+
+// Returns how many minutes of [blockStart, blockEnd] fall inside the exclusion slot.
+function exclusionOverlap(blockStart: string, blockEnd: string, ex: DailyExclusion): number {
+  const s = Math.max(timeToMinutes(blockStart), timeToMinutes(ex.start));
+  const e = Math.min(timeToMinutes(blockEnd), timeToMinutes(ex.end));
+  return Math.max(0, e - s);
 }
 
 export function calcWorkTypeSummary(
@@ -67,9 +79,17 @@ export function calcWorkTypeSummary(
   workDayStart: string,
   workDayEnd: string,
   weekdays: string[],
+  exclusions: DailyExclusion[] = [],
 ): WorkTypeSummary {
+  // Effective window per day = work day minus recurring excluded slots (standup, break, etc.)
   const workDayMinutes = timeToMinutes(workDayEnd) - timeToMinutes(workDayStart);
-  const totalWindowMinutes = workDayMinutes * weekdays.length;
+  const excludedPerDay = exclusions.reduce(
+    (sum, ex) => sum + workDayOverlapMinutes(ex.start, ex.end, workDayStart, workDayEnd),
+    0,
+  );
+  const effectiveDayMinutes = Math.max(0, workDayMinutes - excludedPerDay);
+  const totalWindowMinutes = effectiveDayMinutes * weekdays.length;
+
   const weekdaySet = new Set(weekdays);
 
   let deepMinutes = 0;
@@ -86,10 +106,13 @@ export function calcWorkTypeSummary(
     else if (block.workType === 'active_break') breakMinutes += dur;
 
     if (weekdaySet.has(block.date)) {
-      const overlap = workDayOverlapMinutes(block.startTime, block.endTime, workDayStart, workDayEnd);
-      if (block.workType === 'deep') deepInWindowMinutes += overlap;
-      else if (block.workType === 'shallow') shallowInWindowMinutes += overlap;
-      else if (block.workType === 'active_break') breakInWindowMinutes += overlap;
+      // Effective overlap = work-day overlap minus any portion inside excluded slots
+      const workOverlap = workDayOverlapMinutes(block.startTime, block.endTime, workDayStart, workDayEnd);
+      const exOverlap = exclusions.reduce((sum, ex) => sum + exclusionOverlap(block.startTime, block.endTime, ex), 0);
+      const effective = Math.max(0, workOverlap - exOverlap);
+      if (block.workType === 'deep') deepInWindowMinutes += effective;
+      else if (block.workType === 'shallow') shallowInWindowMinutes += effective;
+      else if (block.workType === 'active_break') breakInWindowMinutes += effective;
     }
   }
 

@@ -13,6 +13,7 @@ import {
   type ProjectRow,
   type TaskRow,
   type WorkTypeSummary,
+  type DailyExclusion,
 } from '../utils/statistics';
 
 // ─── Date range helpers ───────────────────────────────────────────────────────
@@ -294,14 +295,26 @@ export function StatisticsView({ allTasks, projects, categories }: Props) {
   const workDayStart = settings?.workDayStart ?? '09:15';
   const workDayEnd = settings?.workDayEnd ?? '18:00';
 
+  // Daily slots excluded from the productive window (standup + default break)
+  const exclusions = useMemo<DailyExclusion[]>(() => {
+    const result: DailyExclusion[] = [];
+    if (settings?.standupStart && settings?.standupEnd) {
+      result.push({ start: settings.standupStart, end: settings.standupEnd });
+    }
+    if (settings?.defaultBreakStart && settings?.defaultBreakEnd) {
+      result.push({ start: settings.defaultBreakStart, end: settings.defaultBreakEnd });
+    }
+    return result;
+  }, [settings]);
+
   const weekdays = useMemo(
     () => (dateRange ? weekdaysInRange(dateRange.startDate, dateRange.endDate) : []),
     [dateRange],
   );
 
   const summary = useMemo(
-    () => calcWorkTypeSummary(blocks, workDayStart, workDayEnd, weekdays),
-    [blocks, workDayStart, workDayEnd, weekdays],
+    () => calcWorkTypeSummary(blocks, workDayStart, workDayEnd, weekdays, exclusions),
+    [blocks, workDayStart, workDayEnd, weekdays, exclusions],
   );
 
   const categoryRows = useMemo(
