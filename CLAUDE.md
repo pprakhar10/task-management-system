@@ -62,6 +62,7 @@ src/
       Sidebar.tsx             — left sidebar: categories → projects, inline add category/project
       SidePanel.tsx           — right sliding detail panel with Mark Complete button
       BackupPromptModal.tsx   — backup reminder modal (shown on load when overdue)
+      ReportDialog.tsx        — date-range picker modal before PDF download (This Week / This Month / Custom)
     tasks/
       TaskCard.tsx            — task card: quick-complete circle, subtask checkboxes, restore button
       SubtaskItem.tsx         — individual subtask checkbox row
@@ -141,16 +142,19 @@ src/
 
 ### Phase 9 — Complete
 
-- [x] Download Report icon button in TopNav (download arrow icon, always visible)
-- [x] Two sections in order: Active Tasks → Completed This Week
+- [x] Download Report button in Currently Working view header (indigo button)
+- [x] ReportDialog: date-range selector (This Week default / This Month / Custom from-to dates) before generating
+- [x] Two sections in order: Completed Tasks first, then Active Tasks
 - [x] Both sections grouped by Category → Project
 - [x] Each task shows subtasks underneath; completed subtasks labelled [done] in grey, incomplete in dark
 - [x] No internal fields shown (no flags, status, work type)
 - [x] Completed this week = completedAt within Mon–Fri of current work week
 - [x] Empty sections show "No tasks." message
-- [x] Generated via jsPDF (A4 portrait, text API, helvetica font), triggers browser download
+- [x] PDF template: indigo header bar, emerald section header for completed, indigo for active, tinted category rows, dot bullets, page numbers
+- [x] Generated via jsPDF (A4 portrait, helvetica), triggers browser download
 - [x] New: src/utils/pdf.ts — groupTasksForReport, filterCompletedInRange, generateWeeklyReport
 - [x] New: src/utils/pdf.test.ts — 17 tests for pure functions (156 total)
+- [x] NOTE: always commit package.json + package-lock.json when installing new packages (jsPDF omission caused silent Vercel failures)
 
 ### Phase 10 — Complete
 
