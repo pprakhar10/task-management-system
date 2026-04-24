@@ -687,7 +687,7 @@ export function CalendarView({ categories, projects, tasks, onCreateTask }: Cale
                       <div
                         key={block.id}
                         onClick={e => { e.stopPropagation(); openEdit(block); }}
-                        className={`absolute left-0.5 right-0.5 rounded overflow-hidden cursor-pointer z-10 ${BLOCK_COLORS[block.workType]}${isOutsideHours ? ' opacity-50' : ''}`}
+                        className={`absolute left-0.5 right-0.5 rounded overflow-hidden cursor-pointer z-10 ${BLOCK_COLORS[block.workType]}${isOutsideHours ? ' opacity-50 grayscale' : ''}`}
                         style={{ top: topY + 1, height: blockHeight - 2 }}
                       >
                         <div className="px-1.5 py-0.5">
