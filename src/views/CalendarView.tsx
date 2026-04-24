@@ -14,8 +14,8 @@ const TOTAL_SLOTS = (GRID_END_MIN - GRID_START_MIN) / 15; // 96
 const TOTAL_HEIGHT = TOTAL_SLOTS * SLOT_HEIGHT; // 1920px
 const GRID_TOP_PADDING = 8;
 
-const BREAK_START = '13:00';
-const BREAK_END = '14:15';
+const BREAK_START_DEFAULT = '13:00';
+const BREAK_END_DEFAULT = '14:15';
 
 const WORK_TYPE_LABELS: Record<WorkType, string> = {
   deep: 'Deep Work',
@@ -92,9 +92,6 @@ function formatWeekLabel(days: ReturnType<typeof getWeekDays>): string {
   }
   return `${first.dayNum} – ${last.dayNum} ${first.month} ${first.year}`;
 }
-
-const BREAK_TOP_Y = timeToY(BREAK_START);
-const BREAK_HEIGHT = timeToY(BREAK_END) - BREAK_TOP_Y;
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -385,6 +382,12 @@ export function CalendarView({ categories, projects, tasks, onCreateTask }: Cale
   const pendingDialogRef = useRef<Omit<DialogState, 'taskId' | 'blockId'> | null>(null);
   const prevTaskIdsRef = useRef<Set<number> | null>(null);
 
+  const settings = useLiveQuery(() => db.settings.toCollection().first(), []);
+  const breakStart = settings?.defaultBreakStart ?? BREAK_START_DEFAULT;
+  const breakEnd = settings?.defaultBreakEnd ?? BREAK_END_DEFAULT;
+  const breakTopY = timeToY(breakStart);
+  const breakHeight = timeToY(breakEnd) - breakTopY;
+
   const days = getWeekDays(weekOffset);
   const today = formatLocalDate(new Date());
   const isCurrentWeek = weekOffset === 0;
@@ -657,7 +660,7 @@ export function CalendarView({ categories, projects, tasks, onCreateTask }: Cale
                   {/* Active break band */}
                   <div
                     className="absolute left-0 right-0 bg-amber-50 dark:bg-amber-700/20 pointer-events-none"
-                    style={{ top: GRID_TOP_PADDING + BREAK_TOP_Y, height: BREAK_HEIGHT }}
+                    style={{ top: GRID_TOP_PADDING + breakTopY, height: breakHeight }}
                   />
 
                   {/* Clickable 15-min slots */}

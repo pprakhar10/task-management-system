@@ -22,6 +22,7 @@ import { MorningMeetingView } from './views/MorningMeetingView';
 import { SearchView } from './views/SearchView';
 import { CalendarView } from './views/CalendarView';
 import { StatisticsView } from './views/StatisticsView';
+import { SettingsView } from './views/SettingsView';
 
 export default function App() {
   const [view, setView] = useState<AppView>('explore');
@@ -343,6 +344,7 @@ export default function App() {
         onThemeToggle={handleThemeToggle}
         onCreateTask={handleOpenCreate}
         onSearch={() => handleViewChange('search')}
+        onSettings={() => handleViewChange('settings')}
       />
 
       <div className="flex pt-14 h-full">
@@ -460,6 +462,8 @@ export default function App() {
               onCreateTask={handleOpenCreate}
             />
           )}
+
+          {view === 'settings' && <SettingsView />}
         </main>
       </div>
 

@@ -7,6 +7,7 @@ interface Props {
   onThemeToggle: () => void;
   onCreateTask: () => void;
   onSearch: () => void;
+  onSettings: () => void;
 }
 
 const NAV_ITEMS: { view: AppView; label: string }[] = [
@@ -15,7 +16,7 @@ const NAV_ITEMS: { view: AppView; label: string }[] = [
   { view: 'statistics', label: 'Statistics' },
 ];
 
-export function TopNav({ view, onViewChange, theme, onThemeToggle, onCreateTask, onSearch }: Props) {
+export function TopNav({ view, onViewChange, theme, onThemeToggle, onCreateTask, onSearch, onSettings }: Props) {
   const isCalendar = view === 'calendar';
 
   return (
@@ -105,6 +106,22 @@ export function TopNav({ view, onViewChange, theme, onThemeToggle, onCreateTask,
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
             </svg>
           )}
+        </button>
+
+        {/* Settings */}
+        <button
+          onClick={onSettings}
+          className={`min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg transition-colors ${
+            view === 'settings'
+              ? 'bg-indigo-50 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400'
+              : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+          }`}
+          aria-label="Settings"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 0 0-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 0 0-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 0 0-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 0 0-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 0 0 1.066-2.573c-.94-1.543.826-3.31 2.37-2.37a1.724 1.724 0 0 0 2.572-1.065z" />
+            <circle cx="12" cy="12" r="3" />
+          </svg>
         </button>
       </div>
     </header>

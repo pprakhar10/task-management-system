@@ -72,6 +72,7 @@ src/
     SearchView.tsx            — search + filter view: text query, status/workType/flag/category/project filters
     CalendarView.tsx          — full 24-hour week calendar; week nav; scheduling dialog wired to DB; tap block to edit/delete
     StatisticsView.tsx        — time analytics: period filter, summary cards, stacked bar, category/project/task breakdowns
+    SettingsView.tsx          — work hours, time exclusions, backup export/restore
   db/
     database.ts               — AppDatabase (Dexie) class + db singleton + settings seed on populate
     crud.ts                   — all CRUD: Category, Project, Task, Subtask, CalendarBlock, Settings
@@ -134,8 +135,22 @@ src/
 | 7 | Wire calendar to DB | ✅ Complete |
 | 8 | Statistics page | ✅ Complete |
 | 9 | PDF report | ⬜ |
-| 10 | Settings + backup UI | ⬜ |
+| 10 | Settings + backup UI | ✅ Complete |
 | 11 | Polish — error states, loading states, edge cases | ⬜ |
+
+### Phase 10 — Complete
+
+- [x] Settings view accessible from gear icon in TopNav (highlights when active)
+- [x] Work Hours section: editable workDayStart and workDayEnd (+/− 15-min steps), persisted to DB on each change
+- [x] Time Exclusions section: editable standupStart/standupEnd and defaultBreakStart/defaultBreakEnd
+- [x] All time changes immediately update Statistics (via existing useLiveQuery on settings) and Calendar break band
+- [x] CalendarView break band now reads defaultBreakStart/defaultBreakEnd from DB settings (was hardcoded)
+- [x] Backup section: last backup timestamp, backup reminder threshold (+/− 1 day, 1–365), Export + Restore buttons
+- [x] Export: downloads full JSON snapshot, updates lastBackupAt
+- [x] Restore: file picker (.json), confirm dialog, calls importDB, reloads page to reset all state
+- [x] New file: src/views/SettingsView.tsx
+
+**Note:** Calendar drag-to-move feature was removed (was unreliable on iPad). CalendarView is tap-only: tap block to edit/delete via dialog.
 
 ### Phase 8 — Complete
 
@@ -149,6 +164,9 @@ src/
 - [x] All derived from real CalendarBlocks via useLiveQuery; settings-aware (workDayStart/workDayEnd)
 - [x] New src/utils/statistics.ts: timeToMinutes, minutesToDisplay, blockDurationMinutes, workDayOverlapMinutes, weekdaysInRange, calcWorkTypeSummary, calcCategoryBreakdown, calcProjectBreakdown, calcTaskBreakdown
 - [x] 35 new tests — 135 total passing
+- [x] Standup (09:15–09:45) and lunch break excluded from unutilized denominator via DailyExclusion[] in calcWorkTypeSummary — 4 more tests (139 total)
+- [x] Settings type extended with standupStart/standupEnd; DB bumped to version 2 with upgrade migration
+- [x] Calendar dialog blocks overlapping saves: overlap check in handleDialogSave, inline error shown in dialog footer
 
 ### Phase 7 — Complete
 
