@@ -39,13 +39,21 @@ export default function App() {
   const [showBackupPrompt, setShowBackupPrompt] = useState(false);
   const [showReportDialog, setShowReportDialog] = useState(false);
   const [calendarCreatePreset, setCalendarCreatePreset] = useState<{ categoryId: number; projectId: number } | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Live queries — UI re-renders automatically when DB changes
-  const categories = useLiveQuery(() => db.categories.toArray(), []) ?? [];
-  const projects = useLiveQuery(() => db.projects.toArray(), []) ?? [];
-  const tasks = useLiveQuery(() => db.tasks.filter(t => !t.completed).toArray(), []) ?? [];
-  const completedTasks = useLiveQuery(() => db.tasks.filter(t => t.completed).toArray(), []) ?? [];
-  const subtasks = useLiveQuery(() => db.subtasks.toArray(), []) ?? [];
+  const categoriesRaw = useLiveQuery(() => db.categories.toArray(), []);
+  const projectsRaw = useLiveQuery(() => db.projects.toArray(), []);
+  const tasksRaw = useLiveQuery(() => db.tasks.filter(t => !t.completed).toArray(), []);
+  const completedTasksRaw = useLiveQuery(() => db.tasks.filter(t => t.completed).toArray(), []);
+  const subtasksRaw = useLiveQuery(() => db.subtasks.toArray(), []);
+
+  const isLoading = categoriesRaw === undefined;
+  const categories = categoriesRaw ?? [];
+  const projects = projectsRaw ?? [];
+  const tasks = tasksRaw ?? [];
+  const completedTasks = completedTasksRaw ?? [];
+  const subtasks = subtasksRaw ?? [];
 
   // Seed mock data on first run (when DB is empty)
   const seededRef = useRef(false);
@@ -84,6 +92,13 @@ export default function App() {
     if (theme === 'dark') root.classList.add('dark');
     else root.classList.remove('dark');
   }, [theme]);
+
+  // Auto-dismiss error toast after 4 seconds
+  useEffect(() => {
+    if (!errorMessage) return;
+    const timer = setTimeout(() => setErrorMessage(null), 4000);
+    return () => clearTimeout(timer);
+  }, [errorMessage]);
 
   // Auto-expand first category when categories first load
   const categoriesInitializedRef = useRef(false);
@@ -224,19 +239,31 @@ export default function App() {
   async function handleSubtaskToggle(subtaskId: number) {
     const sub = subtasks.find(s => s.id === subtaskId);
     if (!sub) return;
-    await updateSubtask(subtaskId, {
-      completed: !sub.completed,
-      completedAt: !sub.completed ? Date.now() : null,
-    });
+    try {
+      await updateSubtask(subtaskId, {
+        completed: !sub.completed,
+        completedAt: !sub.completed ? Date.now() : null,
+      });
+    } catch {
+      setErrorMessage('Failed to update subtask. Please try again.');
+    }
   }
 
   async function handleMarkComplete(taskId: number) {
-    await completeTask(taskId);
-    if (selectedTaskId === taskId) closePanel();
+    try {
+      await completeTask(taskId);
+      if (selectedTaskId === taskId) closePanel();
+    } catch {
+      setErrorMessage('Failed to complete task. Please try again.');
+    }
   }
 
   async function handleRestoreTask(taskId: number) {
-    await updateTask(taskId, { completed: false, completedAt: null });
+    try {
+      await updateTask(taskId, { completed: false, completedAt: null });
+    } catch {
+      setErrorMessage('Failed to restore task. Please try again.');
+    }
   }
 
   async function handleFlagToggle(taskId: number) {
@@ -244,7 +271,11 @@ export default function App() {
     if (!task) return;
     const FLAG_CYCLE: (TaskFlag | null)[] = [null, 'urgent', 'important'];
     const next = FLAG_CYCLE[(FLAG_CYCLE.indexOf(task.flag) + 1) % FLAG_CYCLE.length];
-    await updateTask(taskId, { flag: next });
+    try {
+      await updateTask(taskId, { flag: next });
+    } catch {
+      setErrorMessage('Failed to update task flag. Please try again.');
+    }
   }
 
   async function handleStatusToggle(taskId: number) {
@@ -252,45 +283,77 @@ export default function App() {
     if (!task) return;
     const STATUS_CYCLE: TaskStatus[] = ['normal', 'currently_working', 'morning_meeting'];
     const next = STATUS_CYCLE[(STATUS_CYCLE.indexOf(task.status) + 1) % STATUS_CYCLE.length];
-    await updateTask(taskId, { status: next });
+    try {
+      await updateTask(taskId, { status: next });
+    } catch {
+      setErrorMessage('Failed to update task status. Please try again.');
+    }
   }
 
   async function handleAddCategory(name: string) {
-    const category = await createCategory(name);
-    setExpandedCategories(prev => new Set(prev).add(category.id));
+    try {
+      const category = await createCategory(name);
+      setExpandedCategories(prev => new Set(prev).add(category.id));
+    } catch {
+      setErrorMessage('Failed to add category. Please try again.');
+    }
   }
 
   async function handleAddProject(categoryId: number, name: string) {
-    await createProject(categoryId, name);
+    try {
+      await createProject(categoryId, name);
+    } catch {
+      setErrorMessage('Failed to add project. Please try again.');
+    }
   }
 
   async function handleRenameCategory(id: number, name: string) {
-    await updateCategory(id, { name });
+    try {
+      await updateCategory(id, { name });
+    } catch {
+      setErrorMessage('Failed to rename category. Please try again.');
+    }
   }
 
   async function handleDeleteCategory(id: number) {
-    await deleteCategory(id);
-    if (selectedCategoryId === id) {
-      setSelectedCategoryId(null);
-      setSelectedProjectId(null);
+    try {
+      await deleteCategory(id);
+      if (selectedCategoryId === id) {
+        setSelectedCategoryId(null);
+        setSelectedProjectId(null);
+      }
+    } catch {
+      setErrorMessage('Failed to delete category. Please try again.');
     }
   }
 
   async function handleRenameProject(id: number, name: string) {
-    await updateProject(id, { name });
+    try {
+      await updateProject(id, { name });
+    } catch {
+      setErrorMessage('Failed to rename project. Please try again.');
+    }
   }
 
   async function handleDeleteProject(id: number) {
-    await deleteProject(id);
-    if (selectedProjectId === id) {
-      setSelectedProjectId(null);
+    try {
+      await deleteProject(id);
+      if (selectedProjectId === id) {
+        setSelectedProjectId(null);
+      }
+    } catch {
+      setErrorMessage('Failed to delete project. Please try again.');
     }
   }
 
   async function handleThemeToggle() {
     const next: Theme = theme === 'light' ? 'dark' : 'light';
     setTheme(next);
-    await updateSettings({ theme: next });
+    try {
+      await updateSettings({ theme: next });
+    } catch {
+      setErrorMessage('Failed to save theme preference. Please try again.');
+    }
   }
 
   function handleDownloadReport(range: ReportRange) {
@@ -312,33 +375,57 @@ export default function App() {
   }
 
   async function handleCreateTask(input: Parameters<typeof createTask>[0]) {
-    await createTask(input);
-    closePanel();
+    try {
+      await createTask(input);
+      closePanel();
+    } catch {
+      setErrorMessage('Failed to create task. Please try again.');
+    }
   }
 
   async function handleUpdateTask(
     taskId: number,
     changes: Parameters<typeof updateTask>[1],
   ) {
-    await updateTask(taskId, changes);
-    setSidePanelMode('view');
+    try {
+      await updateTask(taskId, changes);
+      setSidePanelMode('view');
+    } catch {
+      setErrorMessage('Failed to save task changes. Please try again.');
+    }
   }
 
   async function handleDeleteTask(taskId: number) {
-    await deleteTask(taskId);
-    closePanel();
+    try {
+      await deleteTask(taskId);
+      closePanel();
+    } catch {
+      setErrorMessage('Failed to delete task. Please try again.');
+    }
   }
 
   async function handleAddSubtask(taskId: number, title: string, dueDate: string | null) {
-    await createSubtask({ taskId, title, dueDate, completed: false, completedAt: null });
+    try {
+      await createSubtask({ taskId, title, dueDate, completed: false, completedAt: null });
+    } catch {
+      setErrorMessage('Failed to add subtask. Please try again.');
+    }
   }
 
   async function handleUpdateSubtask(subtaskId: number, title: string) {
-    await updateSubtask(subtaskId, { title });
+    try {
+      await updateSubtask(subtaskId, { title });
+    } catch {
+      setErrorMessage('Failed to update subtask. Please try again.');
+    }
   }
 
   async function handleDeleteSubtask(subtaskId: number) {
-    await deleteSubtask(subtaskId);
+    try {
+      await deleteSubtask(subtaskId);
+    } catch {
+      setErrorMessage('Failed to delete subtask. Please try again.');
+    }
   }
 
   const showSidebar = view === 'explore';
@@ -376,103 +463,105 @@ export default function App() {
         )}
 
         <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          {view === 'explore' && (
-            <ExploreView
-              tasks={filteredTasks}
-              completedTasks={filteredCompletedTasks}
-              subtasksByTaskId={subtasksByTaskId}
-              projectMap={projectMap}
-              sortBy={sortBy}
-              onSortChange={setSortBy}
-              onTaskClick={setSelectedTaskId}
-              onSubtaskToggle={handleSubtaskToggle}
-              onCompleteTask={handleMarkComplete}
-              onRestoreTask={handleRestoreTask}
-              onFlagToggle={handleFlagToggle}
-              onStatusToggle={handleStatusToggle}
-              onAddSubtask={(taskId, title) => handleAddSubtask(taskId, title, null)}
-              onUpdateSubtask={handleUpdateSubtask}
-              onDeleteSubtask={handleDeleteSubtask}
-              onAddTask={
-                selectedProjectId !== null
-                  ? () => {
-                      handleOpenCreate();
-                    }
-                  : undefined
-              }
-            />
-          )}
+          {isLoading ? (
+            <div className="flex-1 flex items-center justify-center">
+              <p className="text-sm text-gray-400 dark:text-gray-500">Loading…</p>
+            </div>
+          ) : (
+            <>
+              {view === 'explore' && (
+                <ExploreView
+                  tasks={filteredTasks}
+                  completedTasks={filteredCompletedTasks}
+                  subtasksByTaskId={subtasksByTaskId}
+                  projectMap={projectMap}
+                  sortBy={sortBy}
+                  onSortChange={setSortBy}
+                  onTaskClick={setSelectedTaskId}
+                  onSubtaskToggle={handleSubtaskToggle}
+                  onCompleteTask={handleMarkComplete}
+                  onRestoreTask={handleRestoreTask}
+                  onFlagToggle={handleFlagToggle}
+                  onStatusToggle={handleStatusToggle}
+                  onAddSubtask={(taskId, title) => handleAddSubtask(taskId, title, null)}
+                  onUpdateSubtask={handleUpdateSubtask}
+                  onDeleteSubtask={handleDeleteSubtask}
+                  onAddTask={selectedProjectId !== null ? handleOpenCreate : undefined}
+                />
+              )}
 
-          {view === 'currently_working' && (
-            <CurrentlyWorkingView
-              tasks={currentlyWorkingTasks}
-              subtasksByTaskId={subtasksByTaskId}
-              projectMap={projectMap}
-              onTaskClick={setSelectedTaskId}
-              onSubtaskToggle={handleSubtaskToggle}
-              onCompleteTask={handleMarkComplete}
-              onFlagToggle={handleFlagToggle}
-              onStatusToggle={handleStatusToggle}
-              onAddSubtask={(taskId, title) => handleAddSubtask(taskId, title, null)}
-              onUpdateSubtask={handleUpdateSubtask}
-              onDeleteSubtask={handleDeleteSubtask}
-              onDownloadReport={() => setShowReportDialog(true)}
-            />
-          )}
+              {view === 'currently_working' && (
+                <CurrentlyWorkingView
+                  tasks={currentlyWorkingTasks}
+                  subtasksByTaskId={subtasksByTaskId}
+                  projectMap={projectMap}
+                  onTaskClick={setSelectedTaskId}
+                  onSubtaskToggle={handleSubtaskToggle}
+                  onCompleteTask={handleMarkComplete}
+                  onFlagToggle={handleFlagToggle}
+                  onStatusToggle={handleStatusToggle}
+                  onAddSubtask={(taskId, title) => handleAddSubtask(taskId, title, null)}
+                  onUpdateSubtask={handleUpdateSubtask}
+                  onDeleteSubtask={handleDeleteSubtask}
+                  onDownloadReport={() => setShowReportDialog(true)}
+                />
+              )}
 
-          {view === 'morning_meeting' && (
-            <MorningMeetingView
-              tasks={morningMeetingTasks}
-              subtasksByTaskId={subtasksByTaskId}
-              projectMap={projectMap}
-              onTaskClick={setSelectedTaskId}
-              onSubtaskToggle={handleSubtaskToggle}
-              onCompleteTask={handleMarkComplete}
-              onFlagToggle={handleFlagToggle}
-              onStatusToggle={handleStatusToggle}
-              onAddSubtask={(taskId, title) => handleAddSubtask(taskId, title, null)}
-              onUpdateSubtask={handleUpdateSubtask}
-              onDeleteSubtask={handleDeleteSubtask}
-            />
-          )}
+              {view === 'morning_meeting' && (
+                <MorningMeetingView
+                  tasks={morningMeetingTasks}
+                  subtasksByTaskId={subtasksByTaskId}
+                  projectMap={projectMap}
+                  onTaskClick={setSelectedTaskId}
+                  onSubtaskToggle={handleSubtaskToggle}
+                  onCompleteTask={handleMarkComplete}
+                  onFlagToggle={handleFlagToggle}
+                  onStatusToggle={handleStatusToggle}
+                  onAddSubtask={(taskId, title) => handleAddSubtask(taskId, title, null)}
+                  onUpdateSubtask={handleUpdateSubtask}
+                  onDeleteSubtask={handleDeleteSubtask}
+                />
+              )}
 
-          {view === 'search' && (
-            <SearchView
-              allTasks={allTasksForSearch}
-              subtasksByTaskId={subtasksByTaskId}
-              projectMap={projectMap}
-              categories={categories}
-              projects={projects}
-              onTaskClick={setSelectedTaskId}
-              onSubtaskToggle={handleSubtaskToggle}
-              onCompleteTask={handleMarkComplete}
-              onRestoreTask={handleRestoreTask}
-              onFlagToggle={handleFlagToggle}
-              onStatusToggle={handleStatusToggle}
-              onAddSubtask={(taskId, title) => handleAddSubtask(taskId, title, null)}
-              onUpdateSubtask={handleUpdateSubtask}
-              onDeleteSubtask={handleDeleteSubtask}
-            />
-          )}
+              {view === 'search' && (
+                <SearchView
+                  allTasks={allTasksForSearch}
+                  subtasksByTaskId={subtasksByTaskId}
+                  projectMap={projectMap}
+                  categories={categories}
+                  projects={projects}
+                  onTaskClick={setSelectedTaskId}
+                  onSubtaskToggle={handleSubtaskToggle}
+                  onCompleteTask={handleMarkComplete}
+                  onRestoreTask={handleRestoreTask}
+                  onFlagToggle={handleFlagToggle}
+                  onStatusToggle={handleStatusToggle}
+                  onAddSubtask={(taskId, title) => handleAddSubtask(taskId, title, null)}
+                  onUpdateSubtask={handleUpdateSubtask}
+                  onDeleteSubtask={handleDeleteSubtask}
+                />
+              )}
 
-          {view === 'statistics' && (
-            <StatisticsView
-              allTasks={allTasksForSearch}
-              projects={projects}
-              categories={categories}
-            />
-          )}
+              {view === 'statistics' && (
+                <StatisticsView
+                  allTasks={allTasksForSearch}
+                  projects={projects}
+                  categories={categories}
+                />
+              )}
 
-          {view === 'calendar' && (
-            <CalendarView
-              categories={categories}
-              projects={projects}
-              tasks={tasks}
-              onCreateTask={handleOpenCreate}
-            />
-          )}
+              {view === 'calendar' && (
+                <CalendarView
+                  categories={categories}
+                  projects={projects}
+                  tasks={tasks}
+                  onCreateTask={handleOpenCreate}
+                />
+              )}
 
-          {view === 'settings' && <SettingsView />}
+              {view === 'settings' && <SettingsView />}
+            </>
+          )}
         </main>
       </div>
 
@@ -517,6 +606,19 @@ export default function App() {
           onGenerate={handleDownloadReport}
           onClose={() => setShowReportDialog(false)}
         />
+      )}
+
+      {errorMessage && (
+        <div className="fixed bottom-4 right-4 z-50 flex items-center gap-3 max-w-sm px-4 py-3 bg-red-600 text-white text-sm font-medium rounded-lg shadow-lg">
+          <span className="flex-1">{errorMessage}</span>
+          <button
+            onClick={() => setErrorMessage(null)}
+            className="shrink-0 w-5 h-5 flex items-center justify-center rounded hover:bg-red-500 transition-colors text-base leading-none"
+            aria-label="Dismiss"
+          >
+            ×
+          </button>
+        </div>
       )}
     </div>
   );

@@ -16,6 +16,8 @@ const GRID_TOP_PADDING = 8;
 
 const BREAK_START_DEFAULT = '13:00';
 const BREAK_END_DEFAULT = '14:15';
+const WORK_START_DEFAULT = '09:15';
+const WORK_END_DEFAULT = '18:00';
 
 const WORK_TYPE_LABELS: Record<WorkType, string> = {
   deep: 'Deep Work',
@@ -385,6 +387,8 @@ export function CalendarView({ categories, projects, tasks, onCreateTask }: Cale
   const settings = useLiveQuery(() => db.settings.toCollection().first(), []);
   const breakStart = settings?.defaultBreakStart ?? BREAK_START_DEFAULT;
   const breakEnd = settings?.defaultBreakEnd ?? BREAK_END_DEFAULT;
+  const workStart = settings?.workDayStart ?? WORK_START_DEFAULT;
+  const workEnd = settings?.workDayEnd ?? WORK_END_DEFAULT;
   const breakTopY = timeToY(breakStart);
   const breakHeight = timeToY(breakEnd) - breakTopY;
 
@@ -678,11 +682,12 @@ export function CalendarView({ categories, projects, tasks, onCreateTask }: Cale
                     const topY = GRID_TOP_PADDING + timeToY(block.startTime);
                     const blockHeight = timeToY(block.endTime) - timeToY(block.startTime);
                     const label = getBlockLabel(block);
+                    const isOutsideHours = block.endTime <= workStart || block.startTime >= workEnd;
                     return (
                       <div
                         key={block.id}
                         onClick={e => { e.stopPropagation(); openEdit(block); }}
-                        className={`absolute left-0.5 right-0.5 rounded overflow-hidden cursor-pointer z-10 ${BLOCK_COLORS[block.workType]}`}
+                        className={`absolute left-0.5 right-0.5 rounded overflow-hidden cursor-pointer z-10 ${BLOCK_COLORS[block.workType]}${isOutsideHours ? ' opacity-50' : ''}`}
                         style={{ top: topY + 1, height: blockHeight - 2 }}
                       >
                         <div className="px-1.5 py-0.5">
