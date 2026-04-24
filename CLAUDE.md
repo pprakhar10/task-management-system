@@ -87,6 +87,7 @@ src/
     calendar.ts               — snapToSlot, isBlockInBreakBand, calcBlockMove (pure utilities)
     calendar.test.ts          — 25 unit tests for calendar utilities
     statistics.ts             — timeToMinutes, minutesToDisplay, blockDurationMinutes, workDayOverlapMinutes, weekdaysInRange, calcWorkTypeSummary, calcCategoryBreakdown, calcProjectBreakdown, calcTaskBreakdown
+    pdf.ts                    — groupTasksForReport, filterCompletedInRange, generateWeeklyReport (jsPDF)
     statistics.test.ts        — 35 unit tests for all statistics functions
   App.tsx                     — root: live queries, seeder, all handlers
   index.css                   — Tailwind import + dark variant config
@@ -121,7 +122,7 @@ src/
 
 ### Build Phases
 
-**Current phase: 9 — PDF Report (next)**
+**Current phase: 11 — Polish (next)**
 **Plan file:** `C:\Users\pprak\.claude\plans\staged-shimmying-wadler.md`
 
 | # | Phase | Status |
@@ -134,9 +135,22 @@ src/
 | 6 | Calendar UI (static) | ✅ Complete |
 | 7 | Wire calendar to DB | ✅ Complete |
 | 8 | Statistics page | ✅ Complete |
-| 9 | PDF report | ⬜ |
+| 9 | PDF report | ✅ Complete |
 | 10 | Settings + backup UI | ✅ Complete |
 | 11 | Polish — error states, loading states, edge cases | ⬜ |
+
+### Phase 9 — Complete
+
+- [x] Download Report icon button in TopNav (download arrow icon, always visible)
+- [x] Two sections in order: Active Tasks → Completed This Week
+- [x] Both sections grouped by Category → Project
+- [x] Each task shows subtasks underneath; completed subtasks labelled [done] in grey, incomplete in dark
+- [x] No internal fields shown (no flags, status, work type)
+- [x] Completed this week = completedAt within Mon–Fri of current work week
+- [x] Empty sections show "No tasks." message
+- [x] Generated via jsPDF (A4 portrait, text API, helvetica font), triggers browser download
+- [x] New: src/utils/pdf.ts — groupTasksForReport, filterCompletedInRange, generateWeeklyReport
+- [x] New: src/utils/pdf.test.ts — 17 tests for pure functions (156 total)
 
 ### Phase 10 — Complete
 

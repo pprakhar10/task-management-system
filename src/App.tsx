@@ -23,6 +23,9 @@ import { SearchView } from './views/SearchView';
 import { CalendarView } from './views/CalendarView';
 import { StatisticsView } from './views/StatisticsView';
 import { SettingsView } from './views/SettingsView';
+import { generateWeeklyReport } from './utils/pdf';
+import type { ReportRange } from './utils/pdf';
+import { ReportDialog } from './components/layout/ReportDialog';
 
 export default function App() {
   const [view, setView] = useState<AppView>('explore');
@@ -34,6 +37,7 @@ export default function App() {
   const [sidePanelMode, setSidePanelMode] = useState<PanelMode>('view');
   const [sortBy, setSortBy] = useState<SortBy>('dueDate');
   const [showBackupPrompt, setShowBackupPrompt] = useState(false);
+  const [showReportDialog, setShowReportDialog] = useState(false);
   const [calendarCreatePreset, setCalendarCreatePreset] = useState<{ categoryId: number; projectId: number } | null>(null);
 
   // Live queries — UI re-renders automatically when DB changes
@@ -289,6 +293,10 @@ export default function App() {
     await updateSettings({ theme: next });
   }
 
+  function handleDownloadReport(range: ReportRange) {
+    generateWeeklyReport(tasks, completedTasks, subtasks, projects, categories, range);
+  }
+
   async function handleBackUp() {
     const json = await exportDB();
     const blob = new Blob([json], { type: 'application/json' });
@@ -345,6 +353,7 @@ export default function App() {
         onCreateTask={handleOpenCreate}
         onSearch={() => handleViewChange('search')}
         onSettings={() => handleViewChange('settings')}
+        onDownloadReport={() => setShowReportDialog(true)}
       />
 
       <div className="flex pt-14 h-full">
@@ -500,6 +509,13 @@ export default function App() {
         <BackupPromptModal
           onBackUp={handleBackUp}
           onDismiss={() => setShowBackupPrompt(false)}
+        />
+      )}
+
+      {showReportDialog && (
+        <ReportDialog
+          onGenerate={handleDownloadReport}
+          onClose={() => setShowReportDialog(false)}
         />
       )}
     </div>
