@@ -13,16 +13,28 @@ interface Props {
   onAddSubtask: (taskId: number, title: string) => void;
   onUpdateSubtask: (subtaskId: number, title: string) => void;
   onDeleteSubtask: (subtaskId: number) => void;
+  onDownloadReport: () => void;
 }
 
-export function CurrentlyWorkingView({ tasks, subtasksByTaskId, projectMap, onTaskClick, onSubtaskToggle, onCompleteTask, onFlagToggle, onStatusToggle, onAddSubtask, onUpdateSubtask, onDeleteSubtask }: Props) {
+export function CurrentlyWorkingView({ tasks, subtasksByTaskId, projectMap, onTaskClick, onSubtaskToggle, onCompleteTask, onFlagToggle, onStatusToggle, onAddSubtask, onUpdateSubtask, onDeleteSubtask, onDownloadReport }: Props) {
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-        <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100">Currently Working</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-          {tasks.length} active task{tasks.length !== 1 ? 's' : ''}
-        </p>
+      <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100">Currently Working</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+            {tasks.length} active task{tasks.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+        <button
+          onClick={onDownloadReport}
+          className="shrink-0 min-h-[40px] px-4 flex items-center gap-2 rounded-lg border border-gray-300 dark:border-gray-600 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2M7 10l5 5 5-5M12 3v12" />
+          </svg>
+          Download Report
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-5">

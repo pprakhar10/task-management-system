@@ -8,7 +8,6 @@ interface Props {
   onCreateTask: () => void;
   onSearch: () => void;
   onSettings: () => void;
-  onDownloadReport: () => void;
 }
 
 const NAV_ITEMS: { view: AppView; label: string }[] = [
@@ -17,7 +16,7 @@ const NAV_ITEMS: { view: AppView; label: string }[] = [
   { view: 'statistics', label: 'Statistics' },
 ];
 
-export function TopNav({ view, onViewChange, theme, onThemeToggle, onCreateTask, onSearch, onSettings, onDownloadReport }: Props) {
+export function TopNav({ view, onViewChange, theme, onThemeToggle, onCreateTask, onSearch, onSettings }: Props) {
   const isCalendar = view === 'calendar';
 
   return (
@@ -41,17 +40,6 @@ export function TopNav({ view, onViewChange, theme, onThemeToggle, onCreateTask,
           </button>
         ))}
 
-        {/* Report download — kept in left nav so it's always visible */}
-        <button
-          onClick={onDownloadReport}
-          className="min-h-[44px] px-3 rounded-md text-sm font-medium transition-colors text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-gray-100 flex items-center gap-1.5"
-          aria-label="Download report"
-        >
-          <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2M7 10l5 5 5-5M12 3v12" />
-          </svg>
-          <span className="hidden lg:inline">Report</span>
-        </button>
       </nav>
 
       <div className="ml-auto flex items-center gap-2">

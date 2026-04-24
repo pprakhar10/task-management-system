@@ -353,7 +353,6 @@ export default function App() {
         onCreateTask={handleOpenCreate}
         onSearch={() => handleViewChange('search')}
         onSettings={() => handleViewChange('settings')}
-        onDownloadReport={() => setShowReportDialog(true)}
       />
 
       <div className="flex pt-14 h-full">
@@ -417,6 +416,7 @@ export default function App() {
               onAddSubtask={(taskId, title) => handleAddSubtask(taskId, title, null)}
               onUpdateSubtask={handleUpdateSubtask}
               onDeleteSubtask={handleDeleteSubtask}
+              onDownloadReport={() => setShowReportDialog(true)}
             />
           )}
 
