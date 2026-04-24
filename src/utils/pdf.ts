@@ -132,7 +132,30 @@ export function getMonthRange(): ReportRange {
 
 const MARGIN = 18;
 const PAGE_WIDTH = 210;
-const PAGE_MAX_Y = 275; // 297mm - 22mm bottom margin
+const PAGE_HEIGHT = 297;
+const PAGE_MAX_Y = 278; // leave 19mm bottom margin for page numbers
+
+type RGB = [number, number, number];
+type FontStyle = 'bold' | 'normal' | 'italic';
+
+// Palette
+const WHITE: RGB = [255, 255, 255];
+const INDIGO_600: RGB = [79, 70, 229];
+const INDIGO_50: RGB = [238, 242, 255];
+const INDIGO_800: RGB = [55, 48, 163];
+const EMERALD_600: RGB = [5, 150, 105];
+const EMERALD_50: RGB = [209, 250, 229];
+const EMERALD_800: RGB = [6, 78, 59];
+const GRAY_900: RGB = [17, 24, 39];
+const GRAY_500: RGB = [107, 114, 128];
+const GRAY_400: RGB = [156, 163, 175];
+
+function countTasks(groups: CategoryGroup[]): number {
+  return groups.reduce(
+    (sum, cat) => sum + cat.projects.reduce((s, p) => s + p.tasks.length, 0),
+    0,
+  );
+}
 
 export function generateWeeklyReport(
   activeTasks: Task[],
@@ -152,12 +175,11 @@ export function generateWeeklyReport(
   const completedGroups = groupTasksForReport(completedInRange, subtasks, projects, categories);
 
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  let y = MARGIN;
+  let y = 0;
 
-  type RGB = [number, number, number];
-  type FontStyle = 'bold' | 'normal' | 'italic';
+  // ── Helpers ─────────────────────────────────────────────────────────────────
 
-  function checkNewPage(needed = 8) {
+  function checkNewPage(needed = 10) {
     if (y + needed > PAGE_MAX_Y) {
       doc.addPage();
       y = MARGIN;
@@ -169,77 +191,152 @@ export function generateWeeklyReport(
     fontSize: number,
     style: FontStyle = 'normal',
     indent = 0,
-    color: RGB = [30, 30, 30],
+    color: RGB = GRAY_900,
   ) {
     const maxW = PAGE_WIDTH - MARGIN * 2 - indent;
     doc.setFontSize(fontSize);
     doc.setFont('helvetica', style);
     doc.setTextColor(...color);
     const wrapped = doc.splitTextToSize(text, maxW) as string[];
-    const lineH = fontSize * 0.38 + 1.5;
+    const lineH = fontSize * 0.4 + 1.5;
     checkNewPage(wrapped.length * lineH + 1);
     doc.text(wrapped, MARGIN + indent, y);
     y += wrapped.length * lineH;
   }
 
-  function gap(mm: number) {
-    y += mm;
+  function gap(mm: number) { y += mm; }
+
+  function dot(xOffset: number, yOffset = 0) {
+    doc.setFillColor(120, 120, 130);
+    doc.circle(MARGIN + xOffset, y + yOffset - 1, 0.7, 'F');
   }
 
-  function hrule() {
-    doc.setDrawColor(180, 180, 180);
-    doc.line(MARGIN, y, PAGE_WIDTH - MARGIN, y);
-    y += 3;
-  }
+  // ── Page header bar (indigo strip at top of page 1) ──────────────────────────
 
-  // Header
-  write('Work Report', 16, 'bold');
-  gap(1.5);
-  write(`Generated: ${formatShortDate(new Date())}`, 9, 'normal', 0, [120, 120, 120]);
-  gap(7);
+  doc.setFillColor(...INDIGO_600);
+  doc.rect(0, 0, PAGE_WIDTH, 32, 'F');
 
-  function renderSection(title: string, periodLabel: string | null, groups: CategoryGroup[]) {
-    write(title, 11, 'bold');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.setTextColor(...WHITE);
+  doc.text('Work Report', MARGIN, 20);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(199, 210, 254); // indigo-200
+  doc.text(`Generated: ${formatShortDate(new Date())}`, PAGE_WIDTH - MARGIN, 20, { align: 'right' });
+
+  y = 44;
+
+  // ── Section renderer ─────────────────────────────────────────────────────────
+
+  function renderSection(
+    title: string,
+    periodLabel: string | null,
+    groups: CategoryGroup[],
+    headerBg: RGB,
+    categoryBg: RGB,
+    categoryText: RGB,
+  ) {
+    const taskCount = countTasks(groups);
+
+    // Section header bar
+    checkNewPage(18);
+    doc.setFillColor(...headerBg);
+    doc.rect(MARGIN, y - 5, PAGE_WIDTH - MARGIN * 2, 12, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(...WHITE);
+    doc.text(title, MARGIN + 4, y + 3);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(9);
+    doc.text(
+      `${taskCount} task${taskCount !== 1 ? 's' : ''}`,
+      PAGE_WIDTH - MARGIN - 4,
+      y + 3,
+      { align: 'right' },
+    );
+    y += 9;
+
+    // Period label (for completed section)
     if (periodLabel) {
-      gap(0.5);
-      write(periodLabel, 8, 'normal', 0, [140, 140, 140]);
+      gap(2);
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(8);
+      doc.setTextColor(...GRAY_500);
+      doc.text(periodLabel, MARGIN + 2, y);
+      y += 5;
     }
-    hrule();
+
+    gap(3);
 
     if (groups.length === 0) {
-      write('No tasks.', 9, 'normal', 2, [160, 160, 160]);
-      gap(5);
+      write('No tasks.', 9, 'italic', 2, GRAY_400);
+      gap(6);
       return;
     }
 
     for (const cat of groups) {
-      checkNewPage(12);
-      write(cat.categoryName, 10, 'bold');
-      gap(1);
+      checkNewPage(16);
+
+      // Category row with tinted background
+      doc.setFillColor(...categoryBg);
+      doc.rect(MARGIN, y - 4, PAGE_WIDTH - MARGIN * 2, 9, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9.5);
+      doc.setTextColor(...categoryText);
+      doc.text(cat.categoryName.toUpperCase(), MARGIN + 3, y + 2);
+      y += 7;
+      gap(2);
 
       for (const proj of cat.projects) {
-        checkNewPage(10);
-        write(proj.projectName, 9, 'italic', 4, [90, 90, 90]);
+        checkNewPage(12);
+
+        // Project name with a left accent line
+        doc.setDrawColor(...headerBg);
+        doc.setLineWidth(0.5);
+        doc.line(MARGIN + 4, y - 3, MARGIN + 4, y + 3);
+
+        write(proj.projectName, 9, 'italic', 7, GRAY_500);
+        gap(1);
 
         for (const task of proj.tasks) {
-          write(`- ${task.title}`, 9, 'normal', 9);
+          checkNewPage(8);
+          dot(12, 0);
+          write(task.title, 9, 'normal', 15, GRAY_900);
+
           for (const sub of task.subtasks) {
+            checkNewPage(6);
             if (sub.completed) {
-              write(`[done] ${sub.title}`, 8, 'normal', 14, [150, 150, 150]);
+              write(`[done]  ${sub.title}`, 8, 'normal', 20, GRAY_400);
             } else {
-              write(sub.title, 8, 'normal', 14, [60, 60, 60]);
+              dot(18, 0);
+              write(sub.title, 8, 'normal', 21, [60, 60, 70] as RGB);
             }
           }
+          gap(1);
         }
-        gap(2);
+        gap(3);
       }
-      gap(3);
+      gap(4);
     }
-    gap(2);
+    gap(3);
   }
 
-  renderSection('ACTIVE TASKS', null, activeGroups);
-  renderSection('COMPLETED TASKS', range.label, completedGroups);
+  // Completed Tasks first, then Active Tasks
+  renderSection('COMPLETED TASKS', range.label, completedGroups, EMERALD_600, EMERALD_50, EMERALD_800);
+  renderSection('ACTIVE TASKS', null, activeGroups, INDIGO_600, INDIGO_50, INDIGO_800);
+
+  // ── Page numbers ─────────────────────────────────────────────────────────────
+
+  const totalPages = doc.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...GRAY_400);
+    doc.text(`${i} / ${totalPages}`, PAGE_WIDTH / 2, PAGE_HEIGHT - 8, { align: 'center' });
+  }
 
   const dateStr = new Date().toISOString().split('T')[0];
   doc.save(`work-report-${dateStr}.pdf`);
