@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/database';
 import type { Category, Project, Task } from '../types';
+import { GanttChart } from '../components/GanttChart';
 import {
   minutesToDisplay,
   weekdaysInRange,
@@ -267,9 +268,21 @@ interface Props {
 type Period = 'week' | 'month' | 'custom';
 
 export function StatisticsView({ allTasks, projects, categories }: Props) {
+  const [activeTab, setActiveTab] = useState<'summary' | 'gantt'>('summary');
   const [period, setPeriod] = useState<Period>('week');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
+  const [ganttPeriod, setGanttPeriod] = useState<'month' | 'custom'>('month');
+  const [ganttCustomStart, setGanttCustomStart] = useState('');
+  const [ganttCustomEnd, setGanttCustomEnd] = useState('');
+
+  const ganttDateRange = useMemo(() => {
+    if (ganttPeriod === 'month') return currentMonthRange();
+    if (ganttCustomStart && ganttCustomEnd && ganttCustomStart <= ganttCustomEnd) {
+      return { startDate: ganttCustomStart, endDate: ganttCustomEnd };
+    }
+    return null;
+  }, [ganttPeriod, ganttCustomStart, ganttCustomEnd]);
 
   const dateRange = useMemo(() => {
     if (period === 'week') return currentWeekRange();
@@ -378,87 +391,171 @@ export function StatisticsView({ allTasks, projects, categories }: Props) {
     <div className="flex-1 overflow-y-auto">
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
 
-        {/* Period filter */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-            {(['week', 'month', 'custom'] as Period[]).map(p => (
-              <button
-                key={p}
-                onClick={() => setPeriod(p)}
-                className={`min-h-[36px] px-4 text-sm font-medium transition-colors ${
-                  period === p
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
-                }`}
-              >
-                {p === 'week' ? 'This Week' : p === 'month' ? 'This Month' : 'Custom'}
-              </button>
-            ))}
-          </div>
-
-          {period === 'custom' && (
-            <div className="flex items-center gap-2">
-              <input
-                type="date"
-                value={customStart}
-                onChange={e => setCustomStart(e.target.value)}
-                className="min-h-[36px] px-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100"
-              />
-              <span className="text-gray-400 text-sm">to</span>
-              <input
-                type="date"
-                value={customEnd}
-                onChange={e => setCustomEnd(e.target.value)}
-                className="min-h-[36px] px-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100"
-              />
-            </div>
-          )}
-
-          {dateRange && (
-            <span className="text-sm text-gray-500 dark:text-gray-400">
-              {formatDateLabel(dateRange.startDate)} – {formatDateLabel(dateRange.endDate)}
-              {weekdays.length > 0 && ` · ${weekdays.length} work day${weekdays.length !== 1 ? 's' : ''}`}
-              {leaveDaysInRange.length > 0 && (
-                <span className="text-gray-400 dark:text-gray-500">
-                  {` · ${leaveDaysInRange.length} leave day${leaveDaysInRange.length !== 1 ? 's' : ''} excluded`}
-                </span>
-              )}
-            </span>
-          )}
+        {/* Tab switcher */}
+        <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 self-start">
+          {(['summary', 'gantt'] as const).map(tab => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`min-h-[36px] px-4 text-sm font-medium transition-colors ${
+                activeTab === tab
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+              }`}
+            >
+              {tab === 'summary' ? 'Summary' : 'Gantt'}
+            </button>
+          ))}
         </div>
 
-        {period === 'custom' && !dateRange && (
-          <p className="text-sm text-amber-600 dark:text-amber-400">Select a start and end date to view statistics.</p>
-        )}
-
-        {dateRange && (
+        {activeTab === 'summary' && (
           <>
-            {/* Summary cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {cards.map(c => (
-                <SummaryCard key={c.label} {...c} />
-              ))}
+            {/* Period filter */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                {(['week', 'month', 'custom'] as Period[]).map(p => (
+                  <button
+                    key={p}
+                    onClick={() => setPeriod(p)}
+                    className={`min-h-[36px] px-4 text-sm font-medium transition-colors ${
+                      period === p
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                    }`}
+                  >
+                    {p === 'week' ? 'This Week' : p === 'month' ? 'This Month' : 'Custom'}
+                  </button>
+                ))}
+              </div>
+
+              {period === 'custom' && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={customStart}
+                    onChange={e => setCustomStart(e.target.value)}
+                    className="min-h-[36px] px-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100"
+                  />
+                  <span className="text-gray-400 text-sm">to</span>
+                  <input
+                    type="date"
+                    value={customEnd}
+                    onChange={e => setCustomEnd(e.target.value)}
+                    className="min-h-[36px] px-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100"
+                  />
+                </div>
+              )}
+
+              {dateRange && (
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  {formatDateLabel(dateRange.startDate)} – {formatDateLabel(dateRange.endDate)}
+                  {weekdays.length > 0 && ` · ${weekdays.length} work day${weekdays.length !== 1 ? 's' : ''}`}
+                  {leaveDaysInRange.length > 0 && (
+                    <span className="text-gray-400 dark:text-gray-500">
+                      {` · ${leaveDaysInRange.length} leave day${leaveDaysInRange.length !== 1 ? 's' : ''} excluded`}
+                    </span>
+                  )}
+                </span>
+              )}
             </div>
 
-            {/* Stacked distribution bar */}
-            <Section title={`Work Window — ${minutesToDisplay(summary.totalWindowMinutes)}`}>
-              <StackedBar summary={summary} />
-            </Section>
+            {period === 'custom' && !dateRange && (
+              <p className="text-sm text-amber-600 dark:text-amber-400">Select a start and end date to view statistics.</p>
+            )}
 
-            {/* Category breakdown */}
-            <Section title="By Category">
-              <CategoryTable rows={categoryRows} />
-            </Section>
+            {dateRange && (
+              <>
+                {/* Summary cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {cards.map(c => (
+                    <SummaryCard key={c.label} {...c} />
+                  ))}
+                </div>
 
-            {/* Project breakdown */}
-            <Section title="By Project">
-              <ProjectTable rows={projectRows} />
-            </Section>
+                {/* Stacked distribution bar */}
+                <Section title={`Work Window — ${minutesToDisplay(summary.totalWindowMinutes)}`}>
+                  <StackedBar summary={summary} />
+                </Section>
 
-            {/* Task breakdown */}
-            <Section title="By Task">
-              <TaskTable rows={taskRows} />
-            </Section>
+                {/* Category breakdown */}
+                <Section title="By Category">
+                  <CategoryTable rows={categoryRows} />
+                </Section>
+
+                {/* Project breakdown */}
+                <Section title="By Project">
+                  <ProjectTable rows={projectRows} />
+                </Section>
+
+                {/* Task breakdown */}
+                <Section title="By Task">
+                  <TaskTable rows={taskRows} />
+                </Section>
+              </>
+            )}
+          </>
+        )}
+
+        {activeTab === 'gantt' && (
+          <>
+            {/* Gantt period filter */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
+                {(['month', 'custom'] as const).map(p => (
+                  <button
+                    key={p}
+                    onClick={() => setGanttPeriod(p)}
+                    className={`min-h-[36px] px-4 text-sm font-medium transition-colors ${
+                      ganttPeriod === p
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
+                    }`}
+                  >
+                    {p === 'month' ? 'This Month' : 'Custom'}
+                  </button>
+                ))}
+              </div>
+
+              {ganttPeriod === 'custom' && (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={ganttCustomStart}
+                    onChange={e => setGanttCustomStart(e.target.value)}
+                    className="min-h-[36px] px-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100"
+                  />
+                  <span className="text-gray-400 text-sm">to</span>
+                  <input
+                    type="date"
+                    value={ganttCustomEnd}
+                    onChange={e => setGanttCustomEnd(e.target.value)}
+                    className="min-h-[36px] px-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100"
+                  />
+                </div>
+              )}
+
+              {ganttDateRange && (
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  {formatDateLabel(ganttDateRange.startDate)} – {formatDateLabel(ganttDateRange.endDate)}
+                </span>
+              )}
+            </div>
+
+            {ganttPeriod === 'custom' && !ganttDateRange && (
+              <p className="text-sm text-amber-600 dark:text-amber-400">Select a start and end date to view the timeline.</p>
+            )}
+
+            {ganttDateRange && (
+              <Section title="Project Timeline">
+                <GanttChart
+                  tasks={allTasks}
+                  categories={categories}
+                  projects={projects}
+                  rangeStart={ganttDateRange.startDate}
+                  rangeEnd={ganttDateRange.endDate}
+                />
+              </Section>
+            )}
           </>
         )}
       </div>
