@@ -94,6 +94,7 @@ export function SidePanel({
 
   // Form state (shared between create and edit modes)
   const [formTitle, setFormTitle] = useState('');
+  const [formStartDate, setFormStartDate] = useState('');
   const [formDueDate, setFormDueDate] = useState('');
   const [formWorkType, setFormWorkType] = useState<'deep' | 'shallow'>('deep');
   const [formFlag, setFormFlag] = useState<TaskFlag | null>(null);
@@ -112,6 +113,8 @@ export function SidePanel({
 
     if (mode === 'create') {
       setFormTitle('');
+      const today = new Date();
+      setFormStartDate(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`);
       setFormDueDate('');
       setFormWorkType('deep');
       setFormFlag(null);
@@ -120,6 +123,7 @@ export function SidePanel({
     } else if (mode === 'edit' && task) {
       const proj = projects.find(p => p.id === task.projectId);
       setFormTitle(task.title);
+      setFormStartDate(task.startDate);
       setFormDueDate(task.dueDate);
       setFormWorkType(task.workType === 'shallow' ? 'shallow' : 'deep');
       setFormFlag(task.flag);
@@ -139,7 +143,9 @@ export function SidePanel({
   function handleFormSubmit() {
     const title = formTitle.trim();
     if (!title) { setFormError('Title is required.'); return; }
+    if (!formStartDate) { setFormError('Start date is required.'); return; }
     if (!formDueDate) { setFormError('Due date is required.'); return; }
+    if (formStartDate > formDueDate) { setFormError('Start date must be on or before due date.'); return; }
     if (formProjectId === null) { setFormError('Please select a category and project.'); return; }
     setFormError(null);
 
@@ -148,6 +154,7 @@ export function SidePanel({
         projectId: formProjectId,
         workType: formWorkType,
         title,
+        startDate: formStartDate,
         dueDate: formDueDate,
         flag: formFlag,
         status: 'normal',
@@ -159,6 +166,7 @@ export function SidePanel({
         projectId: formProjectId,
         workType: formWorkType,
         title,
+        startDate: formStartDate,
         dueDate: formDueDate,
         flag: formFlag,
       });
@@ -241,6 +249,19 @@ export function SidePanel({
                       onChange={e => setFormTitle(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter') handleFormSubmit(); }}
                       placeholder="Task title"
+                      className={INPUT_CLASS}
+                    />
+                  </div>
+
+                  {/* Start Date */}
+                  <div>
+                    <label className={LABEL_CLASS}>
+                      Start Date <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      value={formStartDate}
+                      onChange={e => setFormStartDate(e.target.value)}
                       className={INPUT_CLASS}
                     />
                   </div>
@@ -409,14 +430,24 @@ export function SidePanel({
                     </button>
                   </div>
 
-                  {/* Due date */}
-                  <div>
-                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
-                      Due Date
-                    </p>
-                    <p className="text-sm text-gray-900 dark:text-gray-100">
-                      {formatDate(task.dueDate)}
-                    </p>
+                  {/* Dates */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+                        Start Date
+                      </p>
+                      <p className="text-sm text-gray-900 dark:text-gray-100">
+                        {formatDate(task.startDate)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-1">
+                        Due Date
+                      </p>
+                      <p className="text-sm text-gray-900 dark:text-gray-100">
+                        {formatDate(task.dueDate)}
+                      </p>
+                    </div>
                   </div>
 
                   {/* Subtasks */}

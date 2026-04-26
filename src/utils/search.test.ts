@@ -9,6 +9,7 @@ function makeTask(overrides: Partial<Task>): Task {
     projectId: 1,
     workType: 'deep',
     title: 'Test task',
+    startDate: '2026-04-19',
     dueDate: '2026-04-22',
     flag: null,
     status: 'normal',

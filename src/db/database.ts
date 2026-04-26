@@ -54,6 +54,19 @@ export class AppDatabase extends Dexie {
       settings: '++id',
       leaveDays: '++id, date',
     });
+    this.version(4).stores({
+      categories: '++id',
+      projects: '++id, categoryId',
+      tasks: '++id, projectId, status, completed, dueDate',
+      subtasks: '++id, taskId',
+      calendarBlocks: '++id, date, taskId',
+      settings: '++id',
+      leaveDays: '++id, date',
+    }).upgrade(tx =>
+      tx.table('tasks').toCollection().modify((task: Task) => {
+        if (!task.startDate) task.startDate = new Date(task.createdAt).toISOString().split('T')[0];
+      }),
+    );
     this.on('populate', () => {
       this.settings.add(DEFAULT_SETTINGS as Settings);
     });

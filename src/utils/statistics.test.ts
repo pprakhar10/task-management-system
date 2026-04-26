@@ -256,8 +256,8 @@ const PROJECTS: Project[] = [
   { id: 2, categoryId: 2, name: 'UI', createdAt: 0 },
 ];
 const TASKS: Task[] = [
-  { id: 1, projectId: 1, workType: 'deep', title: 'Write tests', dueDate: '2026-04-25', flag: null, status: 'normal', completed: false, completedAt: null, createdAt: 0 },
-  { id: 2, projectId: 2, workType: 'shallow', title: 'Review mockups', dueDate: '2026-04-25', flag: null, status: 'normal', completed: false, completedAt: null, createdAt: 0 },
+  { id: 1, projectId: 1, workType: 'deep', title: 'Write tests', startDate: '2026-04-22', dueDate: '2026-04-25', flag: null, status: 'normal', completed: false, completedAt: null, createdAt: 0 },
+  { id: 2, projectId: 2, workType: 'shallow', title: 'Review mockups', startDate: '2026-04-22', dueDate: '2026-04-25', flag: null, status: 'normal', completed: false, completedAt: null, createdAt: 0 },
 ];
 
 describe('calcCategoryBreakdown', () => {

@@ -6,6 +6,7 @@ const OVERDUE = '2026-04-18';
 const TOMORROW = '2026-04-22';
 const NEXT_WEEK = '2026-04-28';
 const NEXT_MONTH = '2026-05-15';
+const LAST_WEEK = '2026-04-14';
 
 export const MOCK_CATEGORIES: Category[] = [
   { id: 1, name: 'ESG Reporting', createdAt: NOW },
@@ -27,6 +28,7 @@ export const MOCK_TASKS: Task[] = [
     projectId: 1,
     workType: 'deep',
     title: 'Complete Section A data collection',
+    startDate: LAST_WEEK,
     dueDate: OVERDUE,
     flag: 'urgent',
     status: 'currently_working',
@@ -39,6 +41,7 @@ export const MOCK_TASKS: Task[] = [
     projectId: 1,
     workType: 'deep',
     title: 'Review emissions methodology with consultant',
+    startDate: '2026-04-17',
     dueDate: TODAY,
     flag: 'important',
     status: 'morning_meeting',
@@ -51,6 +54,7 @@ export const MOCK_TASKS: Task[] = [
     projectId: 1,
     workType: 'shallow',
     title: 'Submit draft report to internal reviewer',
+    startDate: '2026-04-19',
     dueDate: TOMORROW,
     flag: null,
     status: 'normal',
@@ -63,6 +67,7 @@ export const MOCK_TASKS: Task[] = [
     projectId: 2,
     workType: 'deep',
     title: 'Download and verify Tata Steel annual data',
+    startDate: LAST_WEEK,
     dueDate: OVERDUE,
     flag: 'urgent',
     status: 'normal',
@@ -75,6 +80,7 @@ export const MOCK_TASKS: Task[] = [
     projectId: 2,
     workType: 'deep',
     title: 'Build KPI comparison tables',
+    startDate: '2026-04-18',
     dueDate: TODAY,
     flag: null,
     status: 'currently_working',
@@ -87,6 +93,7 @@ export const MOCK_TASKS: Task[] = [
     projectId: 3,
     workType: 'shallow',
     title: 'Send weekly status update to team',
+    startDate: '2026-04-20',
     dueDate: TODAY,
     flag: null,
     status: 'morning_meeting',
@@ -99,6 +106,7 @@ export const MOCK_TASKS: Task[] = [
     projectId: 3,
     workType: 'shallow',
     title: 'Follow up on pending queries from last week',
+    startDate: '2026-04-23',
     dueDate: NEXT_WEEK,
     flag: 'important',
     status: 'normal',
@@ -111,6 +119,7 @@ export const MOCK_TASKS: Task[] = [
     projectId: 4,
     workType: 'deep',
     title: 'Prepare Q1 board presentation deck',
+    startDate: TODAY,
     dueDate: NEXT_WEEK,
     flag: 'important',
     status: 'normal',
@@ -123,6 +132,7 @@ export const MOCK_TASKS: Task[] = [
     projectId: 5,
     workType: 'deep',
     title: 'Document BRSR data collection process end-to-end',
+    startDate: '2026-04-28',
     dueDate: NEXT_MONTH,
     flag: null,
     status: 'normal',
@@ -135,6 +145,7 @@ export const MOCK_TASKS: Task[] = [
     projectId: 5,
     workType: 'shallow',
     title: 'Update process flowcharts for new workflow',
+    startDate: '2026-05-01',
     dueDate: NEXT_MONTH,
     flag: null,
     status: 'normal',

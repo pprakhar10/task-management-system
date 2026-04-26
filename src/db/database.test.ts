@@ -67,7 +67,7 @@ describe('Category CRUD', () => {
     const cat = await createCategory('Cascade');
     const proj = await createProject(cat.id, 'Proj');
     const task = await createTask({
-      projectId: proj.id, workType: 'deep', title: 'T', dueDate: '2026-05-01',
+      projectId: proj.id, workType: 'deep', title: 'T', startDate: '2026-04-28', dueDate: '2026-05-01',
       flag: null, status: 'normal', completed: false, completedAt: null,
     });
     await createSubtask({ taskId: task.id, title: 'Sub', dueDate: null, completed: false, completedAt: null });
@@ -117,7 +117,7 @@ describe('Project CRUD', () => {
     const cat = await createCategory('Cat');
     const proj = await createProject(cat.id, 'Proj');
     const task = await createTask({
-      projectId: proj.id, workType: 'deep', title: 'T', dueDate: '2026-05-01',
+      projectId: proj.id, workType: 'deep', title: 'T', startDate: '2026-04-28', dueDate: '2026-05-01',
       flag: null, status: 'normal', completed: false, completedAt: null,
     });
     await createSubtask({ taskId: task.id, title: 'Sub', dueDate: null, completed: false, completedAt: null });
@@ -137,7 +137,7 @@ describe('Task CRUD', () => {
     const cat = await createCategory('Cat');
     const proj = await createProject(cat.id, 'Proj');
     const task = await createTask({
-      projectId: proj.id, workType: 'deep', title: 'My Task', dueDate: '2026-05-01',
+      projectId: proj.id, workType: 'deep', title: 'My Task', startDate: '2026-04-28', dueDate: '2026-05-01',
       flag: 'urgent', status: 'normal', completed: false, completedAt: null,
     });
     expect(task.id).toBeDefined();
@@ -149,9 +149,9 @@ describe('Task CRUD', () => {
     const cat = await createCategory('Cat');
     const p1 = await createProject(cat.id, 'P1');
     const p2 = await createProject(cat.id, 'P2');
-    await createTask({ projectId: p1.id, workType: 'deep', title: 'T1', dueDate: '2026-05-01', flag: null, status: 'normal', completed: false, completedAt: null });
-    await createTask({ projectId: p1.id, workType: 'shallow', title: 'T2', dueDate: '2026-05-01', flag: null, status: 'normal', completed: false, completedAt: null });
-    await createTask({ projectId: p2.id, workType: 'deep', title: 'T3', dueDate: '2026-05-01', flag: null, status: 'normal', completed: false, completedAt: null });
+    await createTask({ projectId: p1.id, workType: 'deep', title: 'T1', startDate: '2026-04-28', dueDate: '2026-05-01', flag: null, status: 'normal', completed: false, completedAt: null });
+    await createTask({ projectId: p1.id, workType: 'shallow', title: 'T2', startDate: '2026-04-28', dueDate: '2026-05-01', flag: null, status: 'normal', completed: false, completedAt: null });
+    await createTask({ projectId: p2.id, workType: 'deep', title: 'T3', startDate: '2026-04-28', dueDate: '2026-05-01', flag: null, status: 'normal', completed: false, completedAt: null });
 
     const p1tasks = await getTasksByProject(p1.id);
     expect(p1tasks).toHaveLength(2);
@@ -166,7 +166,7 @@ describe('Task CRUD', () => {
     const cat = await createCategory('Cat');
     const proj = await createProject(cat.id, 'Proj');
     const task = await createTask({
-      projectId: proj.id, workType: 'deep', title: 'Original', dueDate: '2026-05-01',
+      projectId: proj.id, workType: 'deep', title: 'Original', startDate: '2026-04-28', dueDate: '2026-05-01',
       flag: null, status: 'normal', completed: false, completedAt: null,
     });
     await updateTask(task.id, { title: 'Updated', flag: 'important', status: 'currently_working' });
@@ -180,7 +180,7 @@ describe('Task CRUD', () => {
     const cat = await createCategory('Cat');
     const proj = await createProject(cat.id, 'Proj');
     const task = await createTask({
-      projectId: proj.id, workType: 'deep', title: 'T', dueDate: '2026-05-01',
+      projectId: proj.id, workType: 'deep', title: 'T', startDate: '2026-04-28', dueDate: '2026-05-01',
       flag: null, status: 'currently_working', completed: false, completedAt: null,
     });
     await completeTask(task.id);
@@ -190,11 +190,22 @@ describe('Task CRUD', () => {
     expect(completed?.status).toBe('normal');
   });
 
+  it('startDate is stored and retrieved correctly', async () => {
+    const cat = await createCategory('Cat');
+    const proj = await createProject(cat.id, 'Proj');
+    const task = await createTask({
+      projectId: proj.id, workType: 'deep', title: 'Dated', startDate: '2026-04-10', dueDate: '2026-05-01',
+      flag: null, status: 'normal', completed: false, completedAt: null,
+    });
+    const found = await getTaskById(task.id);
+    expect(found?.startDate).toBe('2026-04-10');
+  });
+
   it('deleteTask cascades to subtasks', async () => {
     const cat = await createCategory('Cat');
     const proj = await createProject(cat.id, 'Proj');
     const task = await createTask({
-      projectId: proj.id, workType: 'deep', title: 'T', dueDate: '2026-05-01',
+      projectId: proj.id, workType: 'deep', title: 'T', startDate: '2026-04-28', dueDate: '2026-05-01',
       flag: null, status: 'normal', completed: false, completedAt: null,
     });
     await createSubtask({ taskId: task.id, title: 'S1', dueDate: null, completed: false, completedAt: null });
@@ -214,7 +225,7 @@ describe('Subtask CRUD', () => {
     const cat = await createCategory('Cat');
     const proj = await createProject(cat.id, 'Proj');
     const task = await createTask({
-      projectId: proj.id, workType: 'deep', title: 'T', dueDate: '2026-05-01',
+      projectId: proj.id, workType: 'deep', title: 'T', startDate: '2026-04-28', dueDate: '2026-05-01',
       flag: null, status: 'normal', completed: false, completedAt: null,
     });
     const sub = await createSubtask({ taskId: task.id, title: 'Step 1', dueDate: '2026-05-02', completed: false, completedAt: null });
@@ -227,8 +238,8 @@ describe('Subtask CRUD', () => {
   it('getSubtasksByTask filters correctly', async () => {
     const cat = await createCategory('Cat');
     const proj = await createProject(cat.id, 'Proj');
-    const t1 = await createTask({ projectId: proj.id, workType: 'deep', title: 'T1', dueDate: '2026-05-01', flag: null, status: 'normal', completed: false, completedAt: null });
-    const t2 = await createTask({ projectId: proj.id, workType: 'deep', title: 'T2', dueDate: '2026-05-01', flag: null, status: 'normal', completed: false, completedAt: null });
+    const t1 = await createTask({ projectId: proj.id, workType: 'deep', title: 'T1', startDate: '2026-04-28', dueDate: '2026-05-01', flag: null, status: 'normal', completed: false, completedAt: null });
+    const t2 = await createTask({ projectId: proj.id, workType: 'deep', title: 'T2', startDate: '2026-04-28', dueDate: '2026-05-01', flag: null, status: 'normal', completed: false, completedAt: null });
     await createSubtask({ taskId: t1.id, title: 'S1', dueDate: null, completed: false, completedAt: null });
     await createSubtask({ taskId: t1.id, title: 'S2', dueDate: null, completed: false, completedAt: null });
     await createSubtask({ taskId: t2.id, title: 'S3', dueDate: null, completed: false, completedAt: null });
@@ -245,7 +256,7 @@ describe('Subtask CRUD', () => {
   it('updateSubtask persists changes', async () => {
     const cat = await createCategory('Cat');
     const proj = await createProject(cat.id, 'Proj');
-    const task = await createTask({ projectId: proj.id, workType: 'deep', title: 'T', dueDate: '2026-05-01', flag: null, status: 'normal', completed: false, completedAt: null });
+    const task = await createTask({ projectId: proj.id, workType: 'deep', title: 'T', startDate: '2026-04-28', dueDate: '2026-05-01', flag: null, status: 'normal', completed: false, completedAt: null });
     const sub = await createSubtask({ taskId: task.id, title: 'Old', dueDate: null, completed: false, completedAt: null });
     await updateSubtask(sub.id, { title: 'New', dueDate: '2026-06-01' });
     const updated = await getSubtaskById(sub.id);
@@ -256,7 +267,7 @@ describe('Subtask CRUD', () => {
   it('completeSubtask marks completed and sets completedAt', async () => {
     const cat = await createCategory('Cat');
     const proj = await createProject(cat.id, 'Proj');
-    const task = await createTask({ projectId: proj.id, workType: 'deep', title: 'T', dueDate: '2026-05-01', flag: null, status: 'normal', completed: false, completedAt: null });
+    const task = await createTask({ projectId: proj.id, workType: 'deep', title: 'T', startDate: '2026-04-28', dueDate: '2026-05-01', flag: null, status: 'normal', completed: false, completedAt: null });
     const sub = await createSubtask({ taskId: task.id, title: 'S', dueDate: null, completed: false, completedAt: null });
     await completeSubtask(sub.id);
     const completed = await getSubtaskById(sub.id);
@@ -267,7 +278,7 @@ describe('Subtask CRUD', () => {
   it('deleteSubtask removes the subtask', async () => {
     const cat = await createCategory('Cat');
     const proj = await createProject(cat.id, 'Proj');
-    const task = await createTask({ projectId: proj.id, workType: 'deep', title: 'T', dueDate: '2026-05-01', flag: null, status: 'normal', completed: false, completedAt: null });
+    const task = await createTask({ projectId: proj.id, workType: 'deep', title: 'T', startDate: '2026-04-28', dueDate: '2026-05-01', flag: null, status: 'normal', completed: false, completedAt: null });
     const sub = await createSubtask({ taskId: task.id, title: 'S', dueDate: null, completed: false, completedAt: null });
     await deleteSubtask(sub.id);
     expect(await getSubtaskById(sub.id)).toBeUndefined();
@@ -395,7 +406,7 @@ describe('Backup — exportDB / importDB', () => {
     const cat = await createCategory('Finance');
     const proj = await createProject(cat.id, 'Q1 Report');
     await createTask({
-      projectId: proj.id, workType: 'deep', title: 'Compile data', dueDate: '2026-05-10',
+      projectId: proj.id, workType: 'deep', title: 'Compile data', startDate: '2026-05-07', dueDate: '2026-05-10',
       flag: 'urgent', status: 'currently_working', completed: false, completedAt: null,
     });
 
@@ -467,6 +478,7 @@ describe('Task status transitions', () => {
       projectId: proj.id,
       workType: 'deep',
       title: 'Do something',
+      startDate: '2026-05-28',
       dueDate: '2026-06-01',
       flag: null,
       status: 'normal',

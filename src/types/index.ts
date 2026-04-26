@@ -23,6 +23,7 @@ export interface Task {
   projectId: number;
   workType: WorkType;
   title: string;
+  startDate: string; // YYYY-MM-DD
   dueDate: string; // YYYY-MM-DD
   flag: TaskFlag | null;
   status: TaskStatus;
