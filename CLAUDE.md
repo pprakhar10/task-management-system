@@ -48,7 +48,10 @@ Task         { id, projectId, workType, title, dueDate (YYYY-MM-DD, required),
 Subtask      { id, taskId, title, dueDate (optional), completed, completedAt, createdAt }
 CalendarBlock{ id, taskId (null = active_break), workType, date, startTime, endTime, createdAt }
 Settings     { workDayStart, workDayEnd, defaultBreakStart, defaultBreakEnd,
-               theme, lastBackupAt, backupReminderDays }
+               standupStart, standupEnd, theme, lastBackupAt, backupReminderDays }
+LeaveDay     { id, date (YYYY-MM-DD), createdAt }
+// Leave days remove that day from the Statistics work window (no unutilized counted);
+// work blocks on leave days still add to deep/shallow totals
 ```
 
 ### File Structure
@@ -71,15 +74,15 @@ src/
     CurrentlyWorkingView.tsx  — tasks with status=currently_working (morning_meeting included), sorted by dueDate
     MorningMeetingView.tsx    — tasks with status=morning_meeting, sorted by dueDate
     SearchView.tsx            — search + filter view: text query, status/workType/flag/category/project filters
-    CalendarView.tsx          — full 24-hour week calendar; week nav; scheduling dialog wired to DB; tap block to edit/delete
-    StatisticsView.tsx        — time analytics: period filter, summary cards, stacked bar, category/project/task breakdowns
-    SettingsView.tsx          — work hours, time exclusions, backup export/restore
+    CalendarView.tsx          — full 24-hour week calendar; week nav; scheduling dialog wired to DB; tap block to edit/delete; leave day column indicator
+    StatisticsView.tsx        — time analytics: period filter, summary cards, stacked bar, category/project/task breakdowns; leave days excluded from work window
+    SettingsView.tsx          — work hours, time exclusions, leave days (add/remove), backup export/restore
   db/
-    database.ts               — AppDatabase (Dexie) class + db singleton + settings seed on populate
-    crud.ts                   — all CRUD: Category, Project, Task, Subtask, CalendarBlock, Settings
+    database.ts               — AppDatabase (Dexie) class + db singleton + settings seed on populate; DB v3
+    crud.ts                   — all CRUD: Category, Project, Task, Subtask, CalendarBlock, Settings, LeaveDay
     backup.ts                 — exportDB, importDB, shouldPromptBackup
     index.ts                  — re-exports all db exports
-    database.test.ts          — 43 unit tests covering all CRUD + backup round-trip
+    database.test.ts          — 160 unit tests covering all CRUD + backup round-trip
   utils/
     tasks.ts                  — sortTasks, getDueDateStatus, flagOrder, STATUS_ORDER
     tasks.test.ts             — 11 unit tests for sort and due date logic
