@@ -63,3 +63,9 @@ export interface Settings {
   lastBackupAt: number | null;
   backupReminderDays: number;
 }
+
+export interface LeaveDay {
+  id: number;
+  date: string; // YYYY-MM-DD
+  createdAt: number;
+}

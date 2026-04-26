@@ -1,5 +1,5 @@
 import { db } from './database';
-import type { Category, Project, Task, Subtask, CalendarBlock, Settings } from '../types';
+import type { Category, Project, Task, Subtask, CalendarBlock, Settings, LeaveDay } from '../types';
 
 // ─── Categories ─────────────────────────────────────────────────────────────
 
@@ -193,6 +193,26 @@ export async function updateCalendarBlock(
 
 export async function deleteCalendarBlock(id: number): Promise<void> {
   await db.calendarBlocks.delete(id);
+}
+
+// ─── Leave Days ──────────────────────────────────────────────────────────────
+
+export async function addLeaveDay(date: string): Promise<LeaveDay> {
+  const entity = { date, createdAt: Date.now() };
+  const id = await db.leaveDays.add(entity as LeaveDay);
+  return { ...entity, id: id as number };
+}
+
+export async function removeLeaveDay(id: number): Promise<void> {
+  await db.leaveDays.delete(id);
+}
+
+export async function getLeaveDays(): Promise<LeaveDay[]> {
+  return db.leaveDays.orderBy('date').toArray();
+}
+
+export async function getLeaveDaysByDateRange(startDate: string, endDate: string): Promise<LeaveDay[]> {
+  return db.leaveDays.where('date').between(startDate, endDate, true, true).toArray();
 }
 
 // ─── Settings ────────────────────────────────────────────────────────────────

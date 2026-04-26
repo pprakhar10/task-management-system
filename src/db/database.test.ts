@@ -9,6 +9,7 @@ import {
   createCalendarBlock, getCalendarBlocksByDate, getCalendarBlocksByDateRange,
   getCalendarBlockById, updateCalendarBlock, deleteCalendarBlock,
   getSettings, updateSettings,
+  addLeaveDay, removeLeaveDay, getLeaveDays, getLeaveDaysByDateRange,
 } from './crud';
 import { exportDB, importDB, shouldPromptBackup } from './backup';
 
@@ -537,5 +538,42 @@ describe('Task status transitions', () => {
     const updated = await getTaskById(task.id);
     expect(updated?.status).toBe('currently_working');
     expect(updated?.flag).toBe('urgent');
+  });
+});
+
+// ─── Leave Days ───────────────────────────────────────────────────────────────
+
+describe('LeaveDay CRUD', () => {
+  it('adds a leave day and retrieves it', async () => {
+    const leave = await addLeaveDay('2026-05-01');
+    expect(leave.id).toBeDefined();
+    expect(leave.date).toBe('2026-05-01');
+    expect(leave.createdAt).toBeGreaterThan(0);
+  });
+
+  it('getLeaveDays returns all leave days ordered by date', async () => {
+    await addLeaveDay('2026-05-05');
+    await addLeaveDay('2026-05-01');
+    await addLeaveDay('2026-05-10');
+    const all = await getLeaveDays();
+    expect(all).toHaveLength(3);
+    expect(all.map(l => l.date)).toEqual(['2026-05-01', '2026-05-05', '2026-05-10']);
+  });
+
+  it('getLeaveDaysByDateRange returns only days within range (inclusive)', async () => {
+    await addLeaveDay('2026-04-28');
+    await addLeaveDay('2026-05-01');
+    await addLeaveDay('2026-05-05');
+    await addLeaveDay('2026-05-10');
+    const results = await getLeaveDaysByDateRange('2026-05-01', '2026-05-05');
+    expect(results).toHaveLength(2);
+    expect(results.map(l => l.date).sort()).toEqual(['2026-05-01', '2026-05-05']);
+  });
+
+  it('removeLeaveDay deletes the record', async () => {
+    const leave = await addLeaveDay('2026-05-01');
+    await removeLeaveDay(leave.id);
+    const all = await getLeaveDays();
+    expect(all).toHaveLength(0);
   });
 });

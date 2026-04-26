@@ -291,6 +291,15 @@ export function StatisticsView({ allTasks, projects, categories }: Props) {
     [dateRange?.startDate, dateRange?.endDate],
   ) ?? [];
 
+  const leaveDaysInRange = useLiveQuery(
+    () =>
+      dateRange
+        ? db.leaveDays.where('date').between(dateRange.startDate, dateRange.endDate, true, true).toArray()
+        : Promise.resolve([] as import('../types').LeaveDay[]),
+    [dateRange?.startDate, dateRange?.endDate],
+  ) ?? [];
+  const leaveDaySet = useMemo(() => new Set(leaveDaysInRange.map(l => l.date)), [leaveDaysInRange]);
+
   const settings = useLiveQuery(() => db.settings.toCollection().first(), []);
   const workDayStart = settings?.workDayStart ?? '09:15';
   const workDayEnd = settings?.workDayEnd ?? '18:00';
@@ -308,8 +317,8 @@ export function StatisticsView({ allTasks, projects, categories }: Props) {
   }, [settings]);
 
   const weekdays = useMemo(
-    () => (dateRange ? weekdaysInRange(dateRange.startDate, dateRange.endDate) : []),
-    [dateRange],
+    () => (dateRange ? weekdaysInRange(dateRange.startDate, dateRange.endDate).filter(d => !leaveDaySet.has(d)) : []),
+    [dateRange, leaveDaySet],
   );
 
   const summary = useMemo(
@@ -409,6 +418,11 @@ export function StatisticsView({ allTasks, projects, categories }: Props) {
             <span className="text-sm text-gray-500 dark:text-gray-400">
               {formatDateLabel(dateRange.startDate)} – {formatDateLabel(dateRange.endDate)}
               {weekdays.length > 0 && ` · ${weekdays.length} work day${weekdays.length !== 1 ? 's' : ''}`}
+              {leaveDaysInRange.length > 0 && (
+                <span className="text-gray-400 dark:text-gray-500">
+                  {` · ${leaveDaysInRange.length} leave day${leaveDaysInRange.length !== 1 ? 's' : ''} excluded`}
+                </span>
+              )}
             </span>
           )}
         </div>

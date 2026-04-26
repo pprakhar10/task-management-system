@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/database';
-import { updateSettings } from '../db/crud';
+import { updateSettings, addLeaveDay, removeLeaveDay } from '../db/crud';
 import { exportDB, importDB } from '../db/backup';
 import type { Settings } from '../types';
 
@@ -69,10 +69,36 @@ type TimeSettingKey = keyof Pick<
 
 // ── SettingsView ──────────────────────────────────────────────────────────────
 
+function formatLeaveDate(dateStr: string): string {
+  const d = new Date(dateStr + 'T12:00:00');
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 export function SettingsView() {
   const settings = useLiveQuery(() => db.settings.toCollection().first(), []);
+  const leaveDays = useLiveQuery(() => db.leaveDays.orderBy('date').toArray(), []) ?? [];
   const [restoreError, setRestoreError] = useState<string | null>(null);
+  const [newLeaveDate, setNewLeaveDate] = useState('');
+  const [leaveDateError, setLeaveDateError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleAddLeaveDay() {
+    if (!newLeaveDate) {
+      setLeaveDateError('Select a date first.');
+      return;
+    }
+    if (leaveDays.some(l => l.date === newLeaveDate)) {
+      setLeaveDateError('This date is already marked as leave.');
+      return;
+    }
+    setLeaveDateError(null);
+    await addLeaveDay(newLeaveDate);
+    setNewLeaveDate('');
+  }
+
+  async function handleRemoveLeaveDay(id: number) {
+    await removeLeaveDay(id);
+  }
 
   if (!settings) {
     return (
@@ -200,6 +226,60 @@ export function SettingsView() {
             <p className="text-xs text-gray-400 dark:text-gray-500">
               Also controls the amber band shown on the calendar.
             </p>
+          </div>
+        </section>
+
+        {/* Leave Days */}
+        <section className="space-y-3">
+          <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+            Leave Days
+          </h2>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Days marked as leave are excluded from the work window in Statistics — no unutilized time is counted. Work logged on those days still appears in totals.
+          </p>
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-4">
+            {/* Add input */}
+            <div className="flex items-center gap-2">
+              <input
+                type="date"
+                value={newLeaveDate}
+                onChange={e => { setNewLeaveDate(e.target.value); setLeaveDateError(null); }}
+                className="flex-1 min-h-[36px] px-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm text-gray-900 dark:text-gray-100"
+              />
+              <button
+                onClick={handleAddLeaveDay}
+                className="min-h-[36px] px-4 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium transition-colors"
+              >
+                Add
+              </button>
+            </div>
+            {leaveDateError && (
+              <p className="text-xs text-red-600 dark:text-red-400 font-medium">{leaveDateError}</p>
+            )}
+
+            {/* List */}
+            {leaveDays.length === 0 ? (
+              <p className="text-sm text-gray-400 dark:text-gray-500">No leave days added yet.</p>
+            ) : (
+              <ul className="divide-y divide-gray-100 dark:divide-gray-800">
+                {leaveDays.map(leave => (
+                  <li key={leave.id} className="flex items-center justify-between py-2">
+                    <span className="text-sm text-gray-900 dark:text-gray-100">
+                      {formatLeaveDate(leave.date)}
+                    </span>
+                    <button
+                      onClick={() => handleRemoveLeaveDay(leave.id)}
+                      className="min-h-[32px] min-w-[32px] flex items-center justify-center rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      aria-label={`Remove ${leave.date}`}
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </section>
 

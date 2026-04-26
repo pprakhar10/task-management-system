@@ -123,7 +123,7 @@ src/
 
 ### Build Phases
 
-**Current phase: 11 — Polish (next)**
+**All 11 phases complete. Leave Days feature complete.**
 **Plan file:** `C:\Users\pprak\.claude\plans\staged-shimmying-wadler.md`
 
 | # | Phase | Status |
@@ -138,7 +138,17 @@ src/
 | 8 | Statistics page | ✅ Complete |
 | 9 | PDF report | ✅ Complete |
 | 10 | Settings + backup UI | ✅ Complete |
-| 11 | Polish — error states, loading states, edge cases | ⬜ |
+| 11 | Polish — error states, loading states, edge cases | ✅ Complete |
+| 12 | Leave Days — add/remove in Settings, calendar indicator, statistics exclusion | ✅ Complete |
+
+### Phase 11 — Complete
+
+- [x] Error handling: all DB write handlers in App.tsx wrapped in try/catch with specific error messages
+- [x] Error toast: fixed bottom-right red banner, auto-dismisses after 4s, manually dismissible
+- [x] Loading state: `isLoading` guard on main content area prevents empty-state flash on initial DB load
+- [x] Calendar visual: blocks outside work hours (before workDayStart or after workDayEnd) render with `opacity-50 grayscale` — desaturation applied so effect is visible on all work types (pure opacity was invisible on bright emerald shallow blocks)
+- [x] Statistics logic confirmed correct: all blocks count toward summary card totals; unutilized = (work day − lunch − standup) minus blocks within that effective window; no code change needed
+- [x] 156 tests passing throughout
 
 ### Phase 9 — Complete
 

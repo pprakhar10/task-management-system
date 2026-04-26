@@ -402,6 +402,13 @@ export function CalendarView({ categories, projects, tasks, onCreateTask }: Cale
     [days[0].date],
   ) ?? [];
 
+  // Live query: leave days for the current week
+  const weekLeaveDays = useLiveQuery(
+    () => db.leaveDays.where('date').between(days[0].date, days[4].date, true, true).toArray(),
+    [days[0].date],
+  ) ?? [];
+  const leaveDaySet = useMemo(() => new Set(weekLeaveDays.map(l => l.date)), [weekLeaveDays]);
+
   // Lookup maps
   const taskMap = useMemo(() => new Map(tasks.map(t => [t.id, t])), [tasks]);
   const projectMap = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
@@ -587,27 +594,45 @@ export function CalendarView({ categories, projects, tasks, onCreateTask }: Cale
               <div className="w-14 flex-shrink-0 border-r border-gray-200 dark:border-gray-700" />
               {days.map(day => {
                 const isToday = day.date === today;
+                const isLeave = leaveDaySet.has(day.date);
                 return (
                   <div
                     key={day.date}
                     className={`flex-1 py-2 text-center border-l border-gray-200 dark:border-gray-700 ${
-                      isToday ? 'bg-indigo-50 dark:bg-indigo-900/20' : ''
+                      isLeave
+                        ? 'bg-gray-100 dark:bg-gray-800/60'
+                        : isToday
+                        ? 'bg-indigo-50 dark:bg-indigo-900/20'
+                        : ''
                     }`}
                   >
                     <div
                       className={`text-xs font-medium ${
-                        isToday ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400'
+                        isLeave
+                          ? 'text-gray-400 dark:text-gray-500'
+                          : isToday
+                          ? 'text-indigo-600 dark:text-indigo-400'
+                          : 'text-gray-500 dark:text-gray-400'
                       }`}
                     >
                       {day.dayName}
                     </div>
                     <div
                       className={`text-sm font-semibold ${
-                        isToday ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-900 dark:text-gray-100'
+                        isLeave
+                          ? 'text-gray-400 dark:text-gray-500'
+                          : isToday
+                          ? 'text-indigo-700 dark:text-indigo-300'
+                          : 'text-gray-900 dark:text-gray-100'
                       }`}
                     >
                       {day.dayNum}
                     </div>
+                    {isLeave && (
+                      <div className="text-[10px] font-medium text-gray-400 dark:text-gray-500 leading-tight">
+                        Leave
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -632,13 +657,18 @@ export function CalendarView({ categories, projects, tasks, onCreateTask }: Cale
             {/* Day columns */}
             {days.map(day => {
               const isToday = day.date === today;
+              const isLeave = leaveDaySet.has(day.date);
               const blocksForDay = weekBlocks.filter(b => b.date === day.date);
 
               return (
                 <div
                   key={day.date}
                   className={`flex-1 relative border-l border-gray-200 dark:border-gray-700 ${
-                    isToday ? 'bg-indigo-50/20 dark:bg-indigo-900/5' : ''
+                    isLeave
+                      ? 'bg-gray-50/60 dark:bg-gray-800/30'
+                      : isToday
+                      ? 'bg-indigo-50/20 dark:bg-indigo-900/5'
+                      : ''
                   }`}
                 >
                   {/* Grid lines — hour / half-hour / 15-min tiers */}

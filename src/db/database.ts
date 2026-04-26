@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie';
-import type { Category, Project, Task, Subtask, CalendarBlock, Settings } from '../types';
+import type { Category, Project, Task, Subtask, CalendarBlock, Settings, LeaveDay } from '../types';
 
 const DEFAULT_SETTINGS: Omit<Settings, 'id'> = {
   workDayStart: '09:15',
@@ -20,6 +20,7 @@ export class AppDatabase extends Dexie {
   subtasks!: EntityTable<Subtask, 'id'>;
   calendarBlocks!: EntityTable<CalendarBlock, 'id'>;
   settings!: EntityTable<Settings, 'id'>;
+  leaveDays!: EntityTable<LeaveDay, 'id'>;
 
   constructor() {
     super('TaskManagementDB');
@@ -44,6 +45,15 @@ export class AppDatabase extends Dexie {
         if (s.standupEnd === undefined) s.standupEnd = '09:45';
       }),
     );
+    this.version(3).stores({
+      categories: '++id',
+      projects: '++id, categoryId',
+      tasks: '++id, projectId, status, completed, dueDate',
+      subtasks: '++id, taskId',
+      calendarBlocks: '++id, date, taskId',
+      settings: '++id',
+      leaveDays: '++id, date',
+    });
     this.on('populate', () => {
       this.settings.add(DEFAULT_SETTINGS as Settings);
     });
