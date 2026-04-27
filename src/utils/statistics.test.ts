@@ -248,12 +248,12 @@ describe('calcWorkTypeSummary', () => {
 // ─── calcCategoryBreakdown ──────────────────────────────────────────────────
 
 const CATS: Category[] = [
-  { id: 1, name: 'Engineering', createdAt: 0 },
-  { id: 2, name: 'Design', createdAt: 0 },
+  { id: 1, name: 'Engineering', sortOrder: 0, createdAt: 0 },
+  { id: 2, name: 'Design', sortOrder: 1, createdAt: 0 },
 ];
 const PROJECTS: Project[] = [
-  { id: 1, categoryId: 1, name: 'Frontend', createdAt: 0 },
-  { id: 2, categoryId: 2, name: 'UI', createdAt: 0 },
+  { id: 1, categoryId: 1, name: 'Frontend', sortOrder: 0, createdAt: 0 },
+  { id: 2, categoryId: 2, name: 'UI', sortOrder: 0, createdAt: 0 },
 ];
 const TASKS: Task[] = [
   { id: 1, projectId: 1, workType: 'deep', title: 'Write tests', startDate: '2026-04-22', dueDate: '2026-04-25', flag: null, status: 'normal', completed: false, completedAt: null, createdAt: 0 },

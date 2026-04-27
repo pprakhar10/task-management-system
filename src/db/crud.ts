@@ -4,13 +4,15 @@ import type { Category, Project, Task, Subtask, CalendarBlock, Settings, LeaveDa
 // ─── Categories ─────────────────────────────────────────────────────────────
 
 export async function createCategory(name: string): Promise<Category> {
-  const entity = { name, createdAt: Date.now() };
+  const last = await db.categories.orderBy('sortOrder').last();
+  const sortOrder = last !== undefined ? last.sortOrder + 1 : 0;
+  const entity = { name, sortOrder, createdAt: Date.now() };
   const id = await db.categories.add(entity as Category);
   return { ...entity, id: id as number };
 }
 
 export async function getCategories(): Promise<Category[]> {
-  return db.categories.toArray();
+  return db.categories.orderBy('sortOrder').toArray();
 }
 
 export async function getCategoryById(id: number): Promise<Category | undefined> {
@@ -38,20 +40,32 @@ export async function deleteCategory(id: number): Promise<void> {
   });
 }
 
+export async function swapCategorySortOrder(id1: number, id2: number): Promise<void> {
+  await db.transaction('rw', db.categories, async () => {
+    const [a, b] = await Promise.all([db.categories.get(id1), db.categories.get(id2)]);
+    if (!a || !b) return;
+    await db.categories.update(id1, { sortOrder: b.sortOrder });
+    await db.categories.update(id2, { sortOrder: a.sortOrder });
+  });
+}
+
 // ─── Projects ────────────────────────────────────────────────────────────────
 
 export async function createProject(categoryId: number, name: string): Promise<Project> {
-  const entity = { categoryId, name, createdAt: Date.now() };
+  const siblings = await db.projects.where('categoryId').equals(categoryId).toArray();
+  const maxOrder = siblings.length > 0 ? Math.max(...siblings.map(p => p.sortOrder ?? 0)) : -1;
+  const sortOrder = maxOrder + 1;
+  const entity = { categoryId, name, sortOrder, createdAt: Date.now() };
   const id = await db.projects.add(entity as Project);
   return { ...entity, id: id as number };
 }
 
 export async function getProjects(): Promise<Project[]> {
-  return db.projects.toArray();
+  return db.projects.orderBy('sortOrder').toArray();
 }
 
 export async function getProjectsByCategory(categoryId: number): Promise<Project[]> {
-  return db.projects.where('categoryId').equals(categoryId).toArray();
+  return db.projects.where('categoryId').equals(categoryId).sortBy('sortOrder');
 }
 
 export async function getProjectById(id: number): Promise<Project | undefined> {
@@ -71,6 +85,15 @@ export async function deleteProject(id: number): Promise<void> {
     }
     await db.tasks.where('projectId').equals(id).delete();
     await db.projects.delete(id);
+  });
+}
+
+export async function swapProjectSortOrder(id1: number, id2: number): Promise<void> {
+  await db.transaction('rw', db.projects, async () => {
+    const [a, b] = await Promise.all([db.projects.get(id1), db.projects.get(id2)]);
+    if (!a || !b) return;
+    await db.projects.update(id1, { sortOrder: b.sortOrder });
+    await db.projects.update(id2, { sortOrder: a.sortOrder });
   });
 }
 
@@ -120,20 +143,23 @@ export async function deleteTask(id: number): Promise<void> {
 
 // ─── Subtasks ────────────────────────────────────────────────────────────────
 
-type CreateSubtaskInput = Omit<Subtask, 'id' | 'createdAt'>;
+type CreateSubtaskInput = Omit<Subtask, 'id' | 'createdAt' | 'sortOrder'>;
 
 export async function createSubtask(input: CreateSubtaskInput): Promise<Subtask> {
-  const entity = { ...input, createdAt: Date.now() };
+  const siblings = await db.subtasks.where('taskId').equals(input.taskId).toArray();
+  const maxOrder = siblings.length > 0 ? Math.max(...siblings.map(s => s.sortOrder ?? 0)) : -1;
+  const sortOrder = maxOrder + 1;
+  const entity = { ...input, sortOrder, createdAt: Date.now() };
   const id = await db.subtasks.add(entity as Subtask);
   return { ...entity, id: id as number };
 }
 
 export async function getSubtasks(): Promise<Subtask[]> {
-  return db.subtasks.toArray();
+  return db.subtasks.orderBy('sortOrder').toArray();
 }
 
 export async function getSubtasksByTask(taskId: number): Promise<Subtask[]> {
-  return db.subtasks.where('taskId').equals(taskId).toArray();
+  return db.subtasks.where('taskId').equals(taskId).sortBy('sortOrder');
 }
 
 export async function getSubtaskById(id: number): Promise<Subtask | undefined> {
@@ -153,6 +179,15 @@ export async function completeSubtask(id: number): Promise<void> {
 
 export async function deleteSubtask(id: number): Promise<void> {
   await db.subtasks.delete(id);
+}
+
+export async function swapSubtaskSortOrder(id1: number, id2: number): Promise<void> {
+  await db.transaction('rw', db.subtasks, async () => {
+    const [a, b] = await Promise.all([db.subtasks.get(id1), db.subtasks.get(id2)]);
+    if (!a || !b) return;
+    await db.subtasks.update(id1, { sortOrder: b.sortOrder });
+    await db.subtasks.update(id2, { sortOrder: a.sortOrder });
+  });
 }
 
 // ─── Calendar Blocks ─────────────────────────────────────────────────────────

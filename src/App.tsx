@@ -8,6 +8,7 @@ import {
   createSubtask, updateSubtask, deleteSubtask,
   updateSettings,
   createCategory, createProject, updateCategory, deleteCategory, updateProject, deleteProject,
+  swapCategorySortOrder, swapProjectSortOrder,
 } from './db/crud';
 import { exportDB, shouldPromptBackup } from './db/backup';
 import { sortTasks } from './utils/tasks';
@@ -42,11 +43,11 @@ export default function App() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Live queries — UI re-renders automatically when DB changes
-  const categoriesRaw = useLiveQuery(() => db.categories.toArray(), []);
-  const projectsRaw = useLiveQuery(() => db.projects.toArray(), []);
+  const categoriesRaw = useLiveQuery(() => db.categories.orderBy('sortOrder').toArray(), []);
+  const projectsRaw = useLiveQuery(() => db.projects.orderBy('sortOrder').toArray(), []);
   const tasksRaw = useLiveQuery(() => db.tasks.filter(t => !t.completed).toArray(), []);
   const completedTasksRaw = useLiveQuery(() => db.tasks.filter(t => t.completed).toArray(), []);
-  const subtasksRaw = useLiveQuery(() => db.subtasks.toArray(), []);
+  const subtasksRaw = useLiveQuery(() => db.subtasks.orderBy('sortOrder').toArray(), []);
 
   const isLoading = categoriesRaw === undefined;
   const categories = categoriesRaw ?? [];
@@ -346,6 +347,52 @@ export default function App() {
     }
   }
 
+  async function handleMoveCategoryUp(id: number) {
+    const idx = categories.findIndex(c => c.id === id);
+    if (idx <= 0) return;
+    try {
+      await swapCategorySortOrder(id, categories[idx - 1].id);
+    } catch {
+      setErrorMessage('Failed to reorder category. Please try again.');
+    }
+  }
+
+  async function handleMoveCategoryDown(id: number) {
+    const idx = categories.findIndex(c => c.id === id);
+    if (idx < 0 || idx >= categories.length - 1) return;
+    try {
+      await swapCategorySortOrder(id, categories[idx + 1].id);
+    } catch {
+      setErrorMessage('Failed to reorder category. Please try again.');
+    }
+  }
+
+  async function handleMoveProjectUp(id: number) {
+    const proj = projects.find(p => p.id === id);
+    if (!proj) return;
+    const siblings = projects.filter(p => p.categoryId === proj.categoryId);
+    const idx = siblings.findIndex(p => p.id === id);
+    if (idx <= 0) return;
+    try {
+      await swapProjectSortOrder(id, siblings[idx - 1].id);
+    } catch {
+      setErrorMessage('Failed to reorder project. Please try again.');
+    }
+  }
+
+  async function handleMoveProjectDown(id: number) {
+    const proj = projects.find(p => p.id === id);
+    if (!proj) return;
+    const siblings = projects.filter(p => p.categoryId === proj.categoryId);
+    const idx = siblings.findIndex(p => p.id === id);
+    if (idx < 0 || idx >= siblings.length - 1) return;
+    try {
+      await swapProjectSortOrder(id, siblings[idx + 1].id);
+    } catch {
+      setErrorMessage('Failed to reorder project. Please try again.');
+    }
+  }
+
   async function handleThemeToggle() {
     const next: Theme = theme === 'light' ? 'dark' : 'light';
     setTheme(next);
@@ -459,6 +506,10 @@ export default function App() {
             onDeleteCategory={handleDeleteCategory}
             onRenameProject={handleRenameProject}
             onDeleteProject={handleDeleteProject}
+            onMoveCategoryUp={handleMoveCategoryUp}
+            onMoveCategoryDown={handleMoveCategoryDown}
+            onMoveProjectUp={handleMoveProjectUp}
+            onMoveProjectDown={handleMoveProjectDown}
           />
         )}
 

@@ -25,6 +25,7 @@ function makeProject(overrides: Partial<Project>): Project {
     id: 1,
     categoryId: 1,
     name: 'Project A',
+    sortOrder: 0,
     createdAt: Date.now(),
     ...overrides,
   };

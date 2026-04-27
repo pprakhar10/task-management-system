@@ -8,6 +8,7 @@ export type SortBy = 'dueDate' | 'flag' | 'status';
 export interface Category {
   id: number;
   name: string;
+  sortOrder: number;
   createdAt: number;
 }
 
@@ -15,6 +16,7 @@ export interface Project {
   id: number;
   categoryId: number;
   name: string;
+  sortOrder: number;
   createdAt: number;
 }
 
@@ -39,6 +41,7 @@ export interface Subtask {
   dueDate: string | null; // YYYY-MM-DD or null
   completed: boolean;
   completedAt: number | null;
+  sortOrder: number;
   createdAt: number;
 }
 

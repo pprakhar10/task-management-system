@@ -3,9 +3,12 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { db } from './database';
 import {
   createCategory, getCategories, getCategoryById, updateCategory, deleteCategory,
+  swapCategorySortOrder,
   createProject, getProjects, getProjectsByCategory, getProjectById, updateProject, deleteProject,
+  swapProjectSortOrder,
   createTask, getTasks, getTasksByProject, getTaskById, updateTask, completeTask, deleteTask,
   createSubtask, getSubtasks, getSubtasksByTask, getSubtaskById, updateSubtask, completeSubtask, deleteSubtask,
+  swapSubtaskSortOrder,
   createCalendarBlock, getCalendarBlocksByDate, getCalendarBlocksByDateRange,
   getCalendarBlockById, updateCalendarBlock, deleteCalendarBlock,
   getSettings, updateSettings,
@@ -63,6 +66,24 @@ describe('Category CRUD', () => {
     expect(found).toBeUndefined();
   });
 
+  it('createCategory assigns ascending sortOrder values', async () => {
+    const a = await createCategory('A');
+    const b = await createCategory('B');
+    const c = await createCategory('C');
+    expect(a.sortOrder).toBe(0);
+    expect(b.sortOrder).toBe(1);
+    expect(c.sortOrder).toBe(2);
+  });
+
+  it('swapCategorySortOrder reverses order of two categories', async () => {
+    const a = await createCategory('A');
+    const b = await createCategory('B');
+    await swapCategorySortOrder(a.id, b.id);
+    const all = await getCategories();
+    expect(all[0].name).toBe('B');
+    expect(all[1].name).toBe('A');
+  });
+
   it('deleteCategory cascades to projects, tasks, and subtasks', async () => {
     const cat = await createCategory('Cascade');
     const proj = await createProject(cat.id, 'Proj');
@@ -111,6 +132,26 @@ describe('Project CRUD', () => {
     const proj = await createProject(cat.id, 'Old');
     await updateProject(proj.id, { name: 'New' });
     expect((await getProjectById(proj.id))?.name).toBe('New');
+  });
+
+  it('createProject assigns ascending sortOrder within the same category', async () => {
+    const cat = await createCategory('Cat');
+    const p1 = await createProject(cat.id, 'P1');
+    const p2 = await createProject(cat.id, 'P2');
+    const p3 = await createProject(cat.id, 'P3');
+    expect(p1.sortOrder).toBe(0);
+    expect(p2.sortOrder).toBe(1);
+    expect(p3.sortOrder).toBe(2);
+  });
+
+  it('swapProjectSortOrder reverses order of two projects', async () => {
+    const cat = await createCategory('Cat');
+    const p1 = await createProject(cat.id, 'P1');
+    const p2 = await createProject(cat.id, 'P2');
+    await swapProjectSortOrder(p1.id, p2.id);
+    const all = await getProjectsByCategory(cat.id);
+    expect(all[0].name).toBe('P2');
+    expect(all[1].name).toBe('P1');
   });
 
   it('deleteProject cascades to tasks and subtasks', async () => {
@@ -282,6 +323,30 @@ describe('Subtask CRUD', () => {
     const sub = await createSubtask({ taskId: task.id, title: 'S', dueDate: null, completed: false, completedAt: null });
     await deleteSubtask(sub.id);
     expect(await getSubtaskById(sub.id)).toBeUndefined();
+  });
+
+  it('createSubtask assigns ascending sortOrder within the same task', async () => {
+    const cat = await createCategory('Cat');
+    const proj = await createProject(cat.id, 'Proj');
+    const task = await createTask({ projectId: proj.id, workType: 'deep', title: 'T', startDate: '2026-04-28', dueDate: '2026-05-01', flag: null, status: 'normal', completed: false, completedAt: null });
+    const s1 = await createSubtask({ taskId: task.id, title: 'S1', dueDate: null, completed: false, completedAt: null });
+    const s2 = await createSubtask({ taskId: task.id, title: 'S2', dueDate: null, completed: false, completedAt: null });
+    const s3 = await createSubtask({ taskId: task.id, title: 'S3', dueDate: null, completed: false, completedAt: null });
+    expect(s1.sortOrder).toBe(0);
+    expect(s2.sortOrder).toBe(1);
+    expect(s3.sortOrder).toBe(2);
+  });
+
+  it('swapSubtaskSortOrder reverses order of two subtasks', async () => {
+    const cat = await createCategory('Cat');
+    const proj = await createProject(cat.id, 'Proj');
+    const task = await createTask({ projectId: proj.id, workType: 'deep', title: 'T', startDate: '2026-04-28', dueDate: '2026-05-01', flag: null, status: 'normal', completed: false, completedAt: null });
+    const s1 = await createSubtask({ taskId: task.id, title: 'S1', dueDate: null, completed: false, completedAt: null });
+    const s2 = await createSubtask({ taskId: task.id, title: 'S2', dueDate: null, completed: false, completedAt: null });
+    await swapSubtaskSortOrder(s1.id, s2.id);
+    const all = await getSubtasksByTask(task.id);
+    expect(all[0].title).toBe('S2');
+    expect(all[1].title).toBe('S1');
   });
 });
 

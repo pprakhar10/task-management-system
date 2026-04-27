@@ -16,6 +16,10 @@ interface Props {
   onDeleteCategory: (id: number) => void;
   onRenameProject: (id: number, name: string) => void;
   onDeleteProject: (id: number) => void;
+  onMoveCategoryUp: (id: number) => void;
+  onMoveCategoryDown: (id: number) => void;
+  onMoveProjectUp: (id: number) => void;
+  onMoveProjectDown: (id: number) => void;
 }
 
 interface InlineInputProps {
@@ -123,6 +127,18 @@ const ICON_DELETE = (
   </svg>
 );
 
+const ICON_UP = (
+  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+  </svg>
+);
+
+const ICON_DOWN = (
+  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+  </svg>
+);
+
 export function Sidebar({
   categories,
   projects,
@@ -138,6 +154,10 @@ export function Sidebar({
   onDeleteCategory,
   onRenameProject,
   onDeleteProject,
+  onMoveCategoryUp,
+  onMoveCategoryDown,
+  onMoveProjectUp,
+  onMoveProjectDown,
 }: Props) {
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [addingProjectForCategoryId, setAddingProjectForCategoryId] = useState<number | null>(null);
@@ -234,24 +254,49 @@ export function Sidebar({
                 )}
 
                 {/* Category inline menu */}
-                {openMenuFor === catKey && (
-                  <div className="ml-2 mb-1 flex gap-1">
-                    <button
-                      onClick={() => { setRenamingId(catKey); setOpenMenuFor(null); }}
-                      className="flex-1 flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                    >
-                      {ICON_RENAME}
-                      Rename
-                    </button>
-                    <button
-                      onClick={() => { setDeletingId(catKey); setOpenMenuFor(null); }}
-                      className="flex-1 flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                    >
-                      {ICON_DELETE}
-                      Delete
-                    </button>
-                  </div>
-                )}
+                {openMenuFor === catKey && (() => {
+                  const catIdx = categories.findIndex(c => c.id === category.id);
+                  const isFirst = catIdx === 0;
+                  const isLast = catIdx === categories.length - 1;
+                  return (
+                    <div className="ml-2 mb-1 space-y-1">
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => { setRenamingId(catKey); setOpenMenuFor(null); }}
+                          className="flex-1 flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                        >
+                          {ICON_RENAME}
+                          Rename
+                        </button>
+                        <button
+                          onClick={() => { setDeletingId(catKey); setOpenMenuFor(null); }}
+                          className="flex-1 flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                        >
+                          {ICON_DELETE}
+                          Delete
+                        </button>
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => { onMoveCategoryUp(category.id); setOpenMenuFor(null); }}
+                          disabled={isFirst}
+                          className="flex-1 flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent dark:disabled:hover:bg-transparent"
+                        >
+                          {ICON_UP}
+                          Move Up
+                        </button>
+                        <button
+                          onClick={() => { onMoveCategoryDown(category.id); setOpenMenuFor(null); }}
+                          disabled={isLast}
+                          className="flex-1 flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent dark:disabled:hover:bg-transparent"
+                        >
+                          {ICON_DOWN}
+                          Move Down
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Projects */}
                 {isExpanded && (
@@ -301,24 +346,50 @@ export function Sidebar({
                           )}
 
                           {/* Project inline menu */}
-                          {openMenuFor === projKey && (
-                            <div className="ml-1 mb-1 flex gap-1">
-                              <button
-                                onClick={() => { setRenamingId(projKey); setOpenMenuFor(null); }}
-                                className="flex-1 flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                              >
-                                {ICON_RENAME}
-                                Rename
-                              </button>
-                              <button
-                                onClick={() => { setDeletingId(projKey); setOpenMenuFor(null); }}
-                                className="flex-1 flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                              >
-                                {ICON_DELETE}
-                                Delete
-                              </button>
-                            </div>
-                          )}
+                          {openMenuFor === projKey && (() => {
+                            const siblings = categoryProjects;
+                            const projIdx = siblings.findIndex(p => p.id === project.id);
+                            const isProjFirst = projIdx === 0;
+                            const isProjLast = projIdx === siblings.length - 1;
+                            return (
+                              <div className="ml-1 mb-1 space-y-1">
+                                <div className="flex gap-1">
+                                  <button
+                                    onClick={() => { setRenamingId(projKey); setOpenMenuFor(null); }}
+                                    className="flex-1 flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                                  >
+                                    {ICON_RENAME}
+                                    Rename
+                                  </button>
+                                  <button
+                                    onClick={() => { setDeletingId(projKey); setOpenMenuFor(null); }}
+                                    className="flex-1 flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                  >
+                                    {ICON_DELETE}
+                                    Delete
+                                  </button>
+                                </div>
+                                <div className="flex gap-1">
+                                  <button
+                                    onClick={() => { onMoveProjectUp(project.id); setOpenMenuFor(null); }}
+                                    disabled={isProjFirst}
+                                    className="flex-1 flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent dark:disabled:hover:bg-transparent"
+                                  >
+                                    {ICON_UP}
+                                    Move Up
+                                  </button>
+                                  <button
+                                    onClick={() => { onMoveProjectDown(project.id); setOpenMenuFor(null); }}
+                                    disabled={isProjLast}
+                                    className="flex-1 flex items-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent dark:disabled:hover:bg-transparent"
+                                  >
+                                    {ICON_DOWN}
+                                    Move Down
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
                       );
                     })}

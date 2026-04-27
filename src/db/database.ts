@@ -67,6 +67,22 @@ export class AppDatabase extends Dexie {
         if (!task.startDate) task.startDate = new Date(task.createdAt).toISOString().split('T')[0];
       }),
     );
+    this.version(5).stores({
+      categories: '++id, sortOrder',
+      projects: '++id, categoryId, sortOrder',
+      tasks: '++id, projectId, status, completed, dueDate',
+      subtasks: '++id, taskId, sortOrder',
+      calendarBlocks: '++id, date, taskId',
+      settings: '++id',
+      leaveDays: '++id, date',
+    }).upgrade(async tx => {
+      const cats = await tx.table('categories').orderBy('id').toArray();
+      await Promise.all(cats.map((c: Category, i: number) => tx.table('categories').update(c.id, { sortOrder: i })));
+      const projs = await tx.table('projects').orderBy('id').toArray();
+      await Promise.all(projs.map((p: Project, i: number) => tx.table('projects').update(p.id, { sortOrder: i })));
+      const subs = await tx.table('subtasks').orderBy('id').toArray();
+      await Promise.all(subs.map((s: Subtask, i: number) => tx.table('subtasks').update(s.id, { sortOrder: i })));
+    });
     this.on('populate', () => {
       this.settings.add(DEFAULT_SETTINGS as Settings);
     });

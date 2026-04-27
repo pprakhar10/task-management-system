@@ -5,11 +5,11 @@ import type { Task, Subtask, Project, Category } from '../types';
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function makeCategory(id: number, name: string): Category {
-  return { id, name, createdAt: 0 };
+  return { id, name, sortOrder: 0, createdAt: 0 };
 }
 
 function makeProject(id: number, categoryId: number, name: string): Project {
-  return { id, categoryId, name, createdAt: 0 };
+  return { id, categoryId, name, sortOrder: 0, createdAt: 0 };
 }
 
 function makeTask(id: number, projectId: number, overrides: Partial<Task> = {}): Task {
@@ -37,6 +37,7 @@ function makeSubtask(id: number, taskId: number, completed = false): Subtask {
     dueDate: null,
     completed,
     completedAt: completed ? 1000 : null,
+    sortOrder: 0,
     createdAt: 0,
   };
 }
