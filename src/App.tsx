@@ -627,6 +627,7 @@ export default function App() {
                   categories={categories}
                   projects={projects}
                   tasks={tasks}
+                  allTasks={allTasksForSearch}
                   onCreateTask={handleOpenCreate}
                 />
               )}

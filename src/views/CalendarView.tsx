@@ -372,10 +372,11 @@ interface CalendarViewProps {
   categories: Category[];
   projects: Project[];
   tasks: Task[];
+  allTasks: Task[];
   onCreateTask: (preset?: { categoryId: number; projectId: number }) => void;
 }
 
-export function CalendarView({ categories, projects, tasks, onCreateTask }: CalendarViewProps) {
+export function CalendarView({ categories, projects, tasks, allTasks, onCreateTask }: CalendarViewProps) {
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [weekOffset, setWeekOffset] = useState(0);
@@ -410,7 +411,7 @@ export function CalendarView({ categories, projects, tasks, onCreateTask }: Cale
   const leaveDaySet = useMemo(() => new Set(weekLeaveDays.map(l => l.date)), [weekLeaveDays]);
 
   // Lookup maps
-  const taskMap = useMemo(() => new Map(tasks.map(t => [t.id, t])), [tasks]);
+  const taskMap = useMemo(() => new Map(allTasks.map(t => [t.id, t])), [allTasks]);
   const projectMap = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
 
   // Current time indicator — updates every minute
