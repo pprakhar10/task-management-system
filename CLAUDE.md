@@ -41,7 +41,8 @@ WorkType: "deep" | "shallow" | "active_break"
 
 Category     { id, name, createdAt }
 Project      { id, categoryId, name, createdAt }
-Task         { id, projectId, workType, title, dueDate (YYYY-MM-DD, required),
+Task         { id, projectId, workType, title, startDate (YYYY-MM-DD, required),
+               dueDate (YYYY-MM-DD, required),
                flag: "urgent"|"important"|null,
                status: "normal"|"currently_working"|"morning_meeting",
                completed, completedAt, createdAt }
@@ -69,20 +70,21 @@ src/
     tasks/
       TaskCard.tsx            — task card: quick-complete circle, subtask checkboxes, restore button
       SubtaskItem.tsx         — individual subtask checkbox row
+    GanttChart.tsx            — Gantt chart component: tasks grouped by Category → Project, bars scaled to date range
   views/
     ExploreView.tsx           — main task browsing: active tasks + collapsible completed archive
     CurrentlyWorkingView.tsx  — tasks with status=currently_working (morning_meeting included), sorted by dueDate
     MorningMeetingView.tsx    — tasks with status=morning_meeting, sorted by dueDate
     SearchView.tsx            — search + filter view: text query, status/workType/flag/category/project filters
     CalendarView.tsx          — full 24-hour week calendar; week nav; scheduling dialog wired to DB; tap block to edit/delete; leave day column indicator
-    StatisticsView.tsx        — time analytics: period filter, summary cards, stacked bar, category/project/task breakdowns; leave days excluded from work window
+    StatisticsView.tsx        — time analytics: Summary/Gantt tabs; Summary: period filter, summary cards, stacked bar, category/project/task breakdowns; Gantt: task timeline bars grouped by project; leave days excluded from work window
     SettingsView.tsx          — work hours, time exclusions, leave days (add/remove), backup export/restore
   db/
-    database.ts               — AppDatabase (Dexie) class + db singleton + settings seed on populate; DB v3
+    database.ts               — AppDatabase (Dexie) class + db singleton + settings seed on populate; DB v4
     crud.ts                   — all CRUD: Category, Project, Task, Subtask, CalendarBlock, Settings, LeaveDay
     backup.ts                 — exportDB, importDB, shouldPromptBackup
     index.ts                  — re-exports all db exports
-    database.test.ts          — 160 unit tests covering all CRUD + backup round-trip
+    database.test.ts          — 161 unit tests covering all CRUD + backup round-trip
   utils/
     tasks.ts                  — sortTasks, getDueDateStatus, flagOrder, STATUS_ORDER
     tasks.test.ts             — 11 unit tests for sort and due date logic
@@ -93,6 +95,8 @@ src/
     statistics.ts             — timeToMinutes, minutesToDisplay, blockDurationMinutes, workDayOverlapMinutes, weekdaysInRange, calcWorkTypeSummary, calcCategoryBreakdown, calcProjectBreakdown, calcTaskBreakdown
     pdf.ts                    — groupTasksForReport, filterCompletedInRange, generateWeeklyReport (jsPDF)
     statistics.test.ts        — 35 unit tests for all statistics functions
+    gantt.ts                  — dateToOffset, taskBarGeometry, filterGanttTasks (pure Gantt utilities)
+    gantt.test.ts             — 22 unit tests for Gantt utilities
   App.tsx                     — root: live queries, seeder, all handlers
   index.css                   — Tailwind import + dark variant config
 ```
@@ -126,7 +130,7 @@ src/
 
 ### Build Phases
 
-**All 11 phases complete. Leave Days feature complete.**
+**All 13 phases complete.**
 **Plan file:** `C:\Users\pprak\.claude\plans\staged-shimmying-wadler.md`
 
 | # | Phase | Status |
@@ -143,6 +147,7 @@ src/
 | 10 | Settings + backup UI | ✅ Complete |
 | 11 | Polish — error states, loading states, edge cases | ✅ Complete |
 | 12 | Leave Days — add/remove in Settings, calendar indicator, statistics exclusion | ✅ Complete |
+| 13 | Start Date + Gantt Chart — startDate on Task, SidePanel form, Gantt tab in Statistics | ✅ Complete |
 
 ### Phase 11 — Complete
 
