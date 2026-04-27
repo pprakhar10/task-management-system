@@ -39,14 +39,15 @@ npx vitest        # Run tests in watch mode
 WorkType: "deep" | "shallow" | "active_break"
 // "unutilized" is derived (work window − calendar blocks), never stored
 
-Category     { id, name, createdAt }
-Project      { id, categoryId, name, createdAt }
+Category     { id, name, sortOrder, createdAt }
+Project      { id, categoryId, name, sortOrder, createdAt }
 Task         { id, projectId, workType, title, startDate (YYYY-MM-DD, required),
                dueDate (YYYY-MM-DD, required),
                flag: "urgent"|"important"|null,
                status: "normal"|"currently_working"|"morning_meeting",
                completed, completedAt, createdAt }
-Subtask      { id, taskId, title, dueDate (optional), completed, completedAt, createdAt }
+Subtask      { id, taskId, title, dueDate (optional), completed, completedAt, sortOrder, createdAt }
+// sortOrder: user-controlled display order; new items get max+1 within their parent group
 CalendarBlock{ id, taskId (null = active_break), workType, date, startTime, endTime, createdAt }
 Settings     { workDayStart, workDayEnd, defaultBreakStart, defaultBreakEnd,
                standupStart, standupEnd, theme, lastBackupAt, backupReminderDays }
@@ -80,7 +81,7 @@ src/
     StatisticsView.tsx        — time analytics: Summary/Gantt tabs; Summary: period filter, summary cards, stacked bar, category/project/task breakdowns; Gantt: task timeline bars grouped by project; leave days excluded from work window
     SettingsView.tsx          — work hours, time exclusions, leave days (add/remove), backup export/restore
   db/
-    database.ts               — AppDatabase (Dexie) class + db singleton + settings seed on populate; DB v4
+    database.ts               — AppDatabase (Dexie) class + db singleton + settings seed on populate; DB v5
     crud.ts                   — all CRUD: Category, Project, Task, Subtask, CalendarBlock, Settings, LeaveDay
     backup.ts                 — exportDB, importDB, shouldPromptBackup
     index.ts                  — re-exports all db exports
@@ -130,7 +131,7 @@ src/
 
 ### Build Phases
 
-**All 13 phases complete.**
+**All 14 phases complete.**
 **Plan file:** `C:\Users\pprak\.claude\plans\staged-shimmying-wadler.md`
 
 | # | Phase | Status |
@@ -148,6 +149,7 @@ src/
 | 11 | Polish — error states, loading states, edge cases | ✅ Complete |
 | 12 | Leave Days — add/remove in Settings, calendar indicator, statistics exclusion | ✅ Complete |
 | 13 | Start Date + Gantt Chart — startDate on Task, SidePanel form, Gantt tab in Statistics | ✅ Complete |
+| 14 | Reordering — sortOrder on Category/Project/Subtask; sidebar Move Up/Down; subtask ↑↓ buttons | ✅ Complete |
 
 ### Phase 11 — Complete
 
