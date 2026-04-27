@@ -413,8 +413,12 @@ export function CalendarView({ categories, projects, tasks, onCreateTask }: Cale
   const taskMap = useMemo(() => new Map(tasks.map(t => [t.id, t])), [tasks]);
   const projectMap = useMemo(() => new Map(projects.map(p => [p.id, p])), [projects]);
 
-  // Current time indicator
-  const now = new Date();
+  // Current time indicator — updates every minute
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(id);
+  }, []);
   const nowMin = now.getHours() * 60 + now.getMinutes();
   const showCurrentTime = nowMin >= GRID_START_MIN && nowMin <= GRID_END_MIN;
   const currentTimeY = ((nowMin - GRID_START_MIN) / 15) * SLOT_HEIGHT;
