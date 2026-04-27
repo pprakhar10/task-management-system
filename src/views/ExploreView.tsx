@@ -18,6 +18,8 @@ interface Props {
   onAddSubtask: (taskId: number, title: string) => void;
   onUpdateSubtask: (subtaskId: number, title: string) => void;
   onDeleteSubtask: (subtaskId: number) => void;
+  onMoveSubtaskUp: (subtaskId: number, taskId: number) => void;
+  onMoveSubtaskDown: (subtaskId: number, taskId: number) => void;
   onAddTask?: () => void;
 }
 
@@ -43,6 +45,8 @@ export function ExploreView({
   onAddSubtask,
   onUpdateSubtask,
   onDeleteSubtask,
+  onMoveSubtaskUp,
+  onMoveSubtaskDown,
   onAddTask,
 }: Props) {
   const [showCompleted, setShowCompleted] = useState(false);
@@ -106,6 +110,8 @@ export function ExploreView({
                 onAddSubtask={onAddSubtask}
                 onUpdateSubtask={onUpdateSubtask}
                 onDeleteSubtask={onDeleteSubtask}
+                onMoveSubtaskUp={onMoveSubtaskUp}
+                onMoveSubtaskDown={onMoveSubtaskDown}
               />
             ))}
           </div>

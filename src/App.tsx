@@ -8,7 +8,7 @@ import {
   createSubtask, updateSubtask, deleteSubtask,
   updateSettings,
   createCategory, createProject, updateCategory, deleteCategory, updateProject, deleteProject,
-  swapCategorySortOrder, swapProjectSortOrder,
+  swapCategorySortOrder, swapProjectSortOrder, swapSubtaskSortOrder,
 } from './db/crud';
 import { exportDB, shouldPromptBackup } from './db/backup';
 import { sortTasks } from './utils/tasks';
@@ -475,6 +475,19 @@ export default function App() {
     }
   }
 
+  async function handleMoveSubtask(subtaskId: number, taskId: number, direction: 'up' | 'down') {
+    const taskSubs = subtasks.filter(s => s.taskId === taskId);
+    const idx = taskSubs.findIndex(s => s.id === subtaskId);
+    if (idx < 0) return;
+    const neighborIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (neighborIdx < 0 || neighborIdx >= taskSubs.length) return;
+    try {
+      await swapSubtaskSortOrder(subtaskId, taskSubs[neighborIdx].id);
+    } catch {
+      setErrorMessage('Failed to reorder subtask. Please try again.');
+    }
+  }
+
   const showSidebar = view === 'explore';
 
   return (
@@ -537,6 +550,8 @@ export default function App() {
                   onAddSubtask={(taskId, title) => handleAddSubtask(taskId, title, null)}
                   onUpdateSubtask={handleUpdateSubtask}
                   onDeleteSubtask={handleDeleteSubtask}
+                  onMoveSubtaskUp={(id, taskId) => handleMoveSubtask(id, taskId, 'up')}
+                  onMoveSubtaskDown={(id, taskId) => handleMoveSubtask(id, taskId, 'down')}
                   onAddTask={selectedProjectId !== null ? handleOpenCreate : undefined}
                 />
               )}
@@ -554,6 +569,8 @@ export default function App() {
                   onAddSubtask={(taskId, title) => handleAddSubtask(taskId, title, null)}
                   onUpdateSubtask={handleUpdateSubtask}
                   onDeleteSubtask={handleDeleteSubtask}
+                  onMoveSubtaskUp={(id, taskId) => handleMoveSubtask(id, taskId, 'up')}
+                  onMoveSubtaskDown={(id, taskId) => handleMoveSubtask(id, taskId, 'down')}
                   onDownloadReport={() => setShowReportDialog(true)}
                 />
               )}
@@ -571,6 +588,8 @@ export default function App() {
                   onAddSubtask={(taskId, title) => handleAddSubtask(taskId, title, null)}
                   onUpdateSubtask={handleUpdateSubtask}
                   onDeleteSubtask={handleDeleteSubtask}
+                  onMoveSubtaskUp={(id, taskId) => handleMoveSubtask(id, taskId, 'up')}
+                  onMoveSubtaskDown={(id, taskId) => handleMoveSubtask(id, taskId, 'down')}
                 />
               )}
 
@@ -590,6 +609,8 @@ export default function App() {
                   onAddSubtask={(taskId, title) => handleAddSubtask(taskId, title, null)}
                   onUpdateSubtask={handleUpdateSubtask}
                   onDeleteSubtask={handleDeleteSubtask}
+                  onMoveSubtaskUp={(id, taskId) => handleMoveSubtask(id, taskId, 'up')}
+                  onMoveSubtaskDown={(id, taskId) => handleMoveSubtask(id, taskId, 'down')}
                 />
               )}
 
@@ -643,6 +664,8 @@ export default function App() {
         onAddSubtask={handleAddSubtask}
         onUpdateSubtask={handleUpdateSubtask}
         onDeleteSubtask={handleDeleteSubtask}
+        onMoveSubtaskUp={(id, taskId) => handleMoveSubtask(id, taskId, 'up')}
+        onMoveSubtaskDown={(id, taskId) => handleMoveSubtask(id, taskId, 'down')}
       />
 
       {showBackupPrompt && (

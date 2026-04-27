@@ -19,6 +19,8 @@ interface Props {
   onAddSubtask: (taskId: number, title: string) => void;
   onUpdateSubtask: (subtaskId: number, title: string) => void;
   onDeleteSubtask: (subtaskId: number) => void;
+  onMoveSubtaskUp: (subtaskId: number, taskId: number) => void;
+  onMoveSubtaskDown: (subtaskId: number, taskId: number) => void;
 }
 
 const BTN_BASE = 'min-h-[36px] px-3 text-xs font-medium rounded-lg border transition-colors';
@@ -31,6 +33,7 @@ export function SearchView({
   allTasks, subtasksByTaskId, projectMap, categories, projects,
   onTaskClick, onSubtaskToggle, onCompleteTask, onRestoreTask,
   onFlagToggle, onStatusToggle, onAddSubtask, onUpdateSubtask, onDeleteSubtask,
+  onMoveSubtaskUp, onMoveSubtaskDown,
 }: Props) {
   const [filters, setFilters] = useState<SearchFilters>(DEFAULT_FILTERS);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -253,6 +256,8 @@ export function SearchView({
                 onAddSubtask={task.completed ? undefined : onAddSubtask}
                 onUpdateSubtask={task.completed ? undefined : onUpdateSubtask}
                 onDeleteSubtask={task.completed ? undefined : onDeleteSubtask}
+                onMoveSubtaskUp={task.completed ? undefined : onMoveSubtaskUp}
+                onMoveSubtaskDown={task.completed ? undefined : onMoveSubtaskDown}
               />
             ))}
           </div>
