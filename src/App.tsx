@@ -552,7 +552,9 @@ export default function App() {
                   onDeleteSubtask={handleDeleteSubtask}
                   onMoveSubtaskUp={(id, taskId) => handleMoveSubtask(id, taskId, 'up')}
                   onMoveSubtaskDown={(id, taskId) => handleMoveSubtask(id, taskId, 'down')}
-                  onAddTask={selectedProjectId !== null ? handleOpenCreate : undefined}
+                  onAddTask={selectedProjectId !== null && selectedCategoryId !== null
+                    ? () => handleOpenCreate({ categoryId: selectedCategoryId, projectId: selectedProjectId })
+                    : undefined}
                 />
               )}
 
