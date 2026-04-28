@@ -15,7 +15,7 @@ export interface SearchFilters {
 
 export const DEFAULT_FILTERS: SearchFilters = {
   query: '',
-  completedFilter: 'all',
+  completedFilter: 'active',
   categoryId: null,
   projectId: null,
   workType: null,
