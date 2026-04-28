@@ -60,9 +60,13 @@ export interface WorkTypeSummary {
   deepMinutes: number;
   shallowMinutes: number;
   breakMinutes: number;
+  emailMinutes: number;
+  meetingMinutes: number;
   deepInWindowMinutes: number;
   shallowInWindowMinutes: number;
   breakInWindowMinutes: number;
+  emailInWindowMinutes: number;
+  meetingInWindowMinutes: number;
   unutilizedMinutes: number;
   totalWindowMinutes: number; // effective window (work day minus exclusions) × weekdays
 }
@@ -95,15 +99,21 @@ export function calcWorkTypeSummary(
   let deepMinutes = 0;
   let shallowMinutes = 0;
   let breakMinutes = 0;
+  let emailMinutes = 0;
+  let meetingMinutes = 0;
   let deepInWindowMinutes = 0;
   let shallowInWindowMinutes = 0;
   let breakInWindowMinutes = 0;
+  let emailInWindowMinutes = 0;
+  let meetingInWindowMinutes = 0;
 
   for (const block of blocks) {
     const dur = blockDurationMinutes(block.startTime, block.endTime);
     if (block.workType === 'deep') deepMinutes += dur;
     else if (block.workType === 'shallow') shallowMinutes += dur;
     else if (block.workType === 'active_break') breakMinutes += dur;
+    else if (block.workType === 'email') emailMinutes += dur;
+    else if (block.workType === 'meeting') meetingMinutes += dur;
 
     if (weekdaySet.has(block.date)) {
       // Effective overlap = work-day overlap minus any portion inside excluded slots
@@ -113,21 +123,21 @@ export function calcWorkTypeSummary(
       if (block.workType === 'deep') deepInWindowMinutes += effective;
       else if (block.workType === 'shallow') shallowInWindowMinutes += effective;
       else if (block.workType === 'active_break') breakInWindowMinutes += effective;
+      else if (block.workType === 'email') emailInWindowMinutes += effective;
+      else if (block.workType === 'meeting') meetingInWindowMinutes += effective;
     }
   }
 
-  const utilizedInWindowMinutes = deepInWindowMinutes + shallowInWindowMinutes + breakInWindowMinutes;
+  const utilizedInWindowMinutes =
+    deepInWindowMinutes + shallowInWindowMinutes + breakInWindowMinutes +
+    emailInWindowMinutes + meetingInWindowMinutes;
   const unutilizedMinutes = Math.max(0, totalWindowMinutes - utilizedInWindowMinutes);
 
   return {
-    deepMinutes,
-    shallowMinutes,
-    breakMinutes,
-    deepInWindowMinutes,
-    shallowInWindowMinutes,
-    breakInWindowMinutes,
-    unutilizedMinutes,
-    totalWindowMinutes,
+    deepMinutes, shallowMinutes, breakMinutes, emailMinutes, meetingMinutes,
+    deepInWindowMinutes, shallowInWindowMinutes, breakInWindowMinutes,
+    emailInWindowMinutes, meetingInWindowMinutes,
+    unutilizedMinutes, totalWindowMinutes,
   };
 }
 

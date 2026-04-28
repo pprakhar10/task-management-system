@@ -216,7 +216,7 @@ function TaskTable({ rows }: TaskTableProps) {
 interface StackedBarProps { summary: WorkTypeSummary; }
 
 function StackedBar({ summary }: StackedBarProps) {
-  const { deepInWindowMinutes: d, shallowInWindowMinutes: s, breakInWindowMinutes: b, unutilizedMinutes: u, totalWindowMinutes: t } = summary;
+  const { deepInWindowMinutes: d, shallowInWindowMinutes: s, breakInWindowMinutes: b, emailInWindowMinutes: e, meetingInWindowMinutes: m, unutilizedMinutes: u, totalWindowMinutes: t } = summary;
   if (t === 0) return null;
   const pct = (v: number) => `${(v / t) * 100}%`;
 
@@ -224,6 +224,8 @@ function StackedBar({ summary }: StackedBarProps) {
     { value: d, label: 'Deep', cls: 'bg-indigo-500' },
     { value: s, label: 'Shallow', cls: 'bg-emerald-500' },
     { value: b, label: 'Break', cls: 'bg-amber-400' },
+    { value: e, label: 'Email', cls: 'bg-sky-400' },
+    { value: m, label: 'Meeting', cls: 'bg-rose-400' },
     { value: u, label: 'Unutilized', cls: 'bg-gray-200 dark:bg-gray-700' },
   ].filter(seg => seg.value > 0);
 
@@ -377,6 +379,20 @@ export function StatisticsView({ allTasks, projects, categories }: Props) {
       pct: tw > 0 ? (summary.breakInWindowMinutes / tw) * 100 : 0,
       color: 'bg-amber-50 text-amber-900',
       darkColor: 'dark:bg-amber-900/20 dark:text-amber-100',
+    },
+    {
+      label: 'Email',
+      minutes: summary.emailMinutes,
+      pct: tw > 0 ? (summary.emailInWindowMinutes / tw) * 100 : 0,
+      color: 'bg-sky-50 text-sky-900',
+      darkColor: 'dark:bg-sky-900/20 dark:text-sky-100',
+    },
+    {
+      label: 'Meeting',
+      minutes: summary.meetingMinutes,
+      pct: tw > 0 ? (summary.meetingInWindowMinutes / tw) * 100 : 0,
+      color: 'bg-rose-50 text-rose-900',
+      darkColor: 'dark:bg-rose-900/20 dark:text-rose-100',
     },
     {
       label: 'Unutilized',

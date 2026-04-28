@@ -23,12 +23,26 @@ const WORK_TYPE_LABELS: Record<WorkType, string> = {
   deep: 'Deep Work',
   shallow: 'Shallow Work',
   active_break: 'Active Break',
+  email: 'Email',
+  meeting: 'Meeting',
 };
 
 const BLOCK_COLORS: Record<WorkType, string> = {
   deep: 'bg-indigo-500 border-l-2 border-indigo-700 text-white',
   shallow: 'bg-emerald-500 border-l-2 border-emerald-700 text-white',
   active_break: 'bg-amber-300 border-l-2 border-amber-500 text-amber-900',
+  email: 'bg-sky-400 border-l-2 border-sky-600 text-white',
+  meeting: 'bg-rose-400 border-l-2 border-rose-600 text-white',
+};
+
+// Work types that have no task association — task selector is hidden for these
+const NO_TASK_WORK_TYPES = new Set<WorkType>(['active_break', 'email', 'meeting']);
+
+// Active-state button colour for each no-task type in the dialog
+const SPECIAL_TYPE_BTN_ACTIVE: Record<string, string> = {
+  active_break: 'bg-amber-500 border-amber-500 text-white',
+  email: 'bg-sky-500 border-sky-500 text-white',
+  meeting: 'bg-rose-500 border-rose-500 text-white',
 };
 
 const HOUR_MARKS = Array.from({ length: 24 }, (_, i) => i);
@@ -155,8 +169,9 @@ function BlockDialog({
     }
   }
 
-  function handleActiveBreakToggle() {
-    if (state.workType === 'active_break') {
+  function handleSpecialTypeToggle(wt: 'active_break' | 'email' | 'meeting') {
+    if (state.workType === wt) {
+      // Deselect — return to task-linked mode with first available task
       const firstCat = categories[0];
       const firstProj = firstCat ? projects.find(p => p.categoryId === firstCat.id) : null;
       const firstTask = firstProj ? tasks.find(t => t.projectId === firstProj.id) : null;
@@ -167,7 +182,7 @@ function BlockDialog({
         taskId: firstTask?.id ?? null,
       });
     } else {
-      onChange({ workType: 'active_break', categoryId: null, projectId: null, taskId: null });
+      onChange({ workType: wt, categoryId: null, projectId: null, taskId: null });
     }
   }
 
@@ -215,22 +230,23 @@ function BlockDialog({
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
-          {/* Active Break toggle */}
-          <div>
-            <button
-              onClick={handleActiveBreakToggle}
-              className={`${BTN_BASE} ${
-                state.workType === 'active_break'
-                  ? 'bg-amber-500 border-amber-500 text-white'
-                  : BTN_OFF
-              }`}
-            >
-              Active Break
-            </button>
+          {/* Non-task work types: Active Break, Email, Meeting */}
+          <div className="flex flex-wrap gap-2">
+            {(['active_break', 'email', 'meeting'] as const).map(wt => (
+              <button
+                key={wt}
+                onClick={() => handleSpecialTypeToggle(wt)}
+                className={`${BTN_BASE} ${
+                  state.workType === wt ? SPECIAL_TYPE_BTN_ACTIVE[wt] : BTN_OFF
+                }`}
+              >
+                {WORK_TYPE_LABELS[wt]}
+              </button>
+            ))}
           </div>
 
-          {/* Task selectors — hidden when active break */}
-          {state.workType !== 'active_break' && (
+          {/* Task selectors — hidden for non-task work types */}
+          {!NO_TASK_WORK_TYPES.has(state.workType) && (
             <>
               {/* Category */}
               {categories.length > 0 && (
@@ -458,7 +474,6 @@ export function CalendarView({ categories, projects, tasks, allTasks, onCreateTa
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   function getBlockLabel(block: CalendarBlock): string {
-    if (block.workType === 'active_break') return 'Active Break';
     if (block.taskId == null) return WORK_TYPE_LABELS[block.workType];
     return taskMap.get(block.taskId)?.title ?? 'Unknown Task';
   }
@@ -514,7 +529,7 @@ export function CalendarView({ categories, projects, tasks, allTasks, onCreateTa
       return;
     }
     const blockData = {
-      taskId: dialog.workType === 'active_break' ? null : (dialog.taskId ?? null),
+      taskId: NO_TASK_WORK_TYPES.has(dialog.workType) ? null : (dialog.taskId ?? null),
       workType: dialog.workType,
       date: dialog.date,
       startTime: dialog.startTime,

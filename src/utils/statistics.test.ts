@@ -193,9 +193,9 @@ describe('calcWorkTypeSummary', () => {
     expect(r.breakInWindowMinutes).toBe(60);
     // unutilized = 525 - 240 = 285
     expect(r.unutilizedMinutes).toBe(285);
-    // in-window values + unutilized = totalWindowMinutes
-    expect(r.deepInWindowMinutes + r.shallowInWindowMinutes + r.breakInWindowMinutes + r.unutilizedMinutes)
-      .toBe(r.totalWindowMinutes);
+    // all in-window values + unutilized = totalWindowMinutes
+    const allInWindow = r.deepInWindowMinutes + r.shallowInWindowMinutes + r.breakInWindowMinutes + r.emailInWindowMinutes + r.meetingInWindowMinutes;
+    expect(allInWindow + r.unutilizedMinutes).toBe(r.totalWindowMinutes);
   });
 
   describe('with daily exclusions (standup + break)', () => {
@@ -239,9 +239,44 @@ describe('calcWorkTypeSummary', () => {
         makeBlock({ id: 2, workType: 'shallow', startTime: '15:00', endTime: '16:00', date: '2026-04-21' }),
       ];
       const r = calcWorkTypeSummary(blocks, WORK_START, WORK_END, ['2026-04-21'], EXCLUSIONS);
-      const utilized = r.deepInWindowMinutes + r.shallowInWindowMinutes + r.breakInWindowMinutes;
+      const utilized = r.deepInWindowMinutes + r.shallowInWindowMinutes + r.breakInWindowMinutes + r.emailInWindowMinutes + r.meetingInWindowMinutes;
       expect(utilized + r.unutilizedMinutes).toBe(r.totalWindowMinutes);
     });
+  });
+
+  it('counts email and meeting blocks separately', () => {
+    const blocks: CalendarBlock[] = [
+      makeBlock({ id: 1, workType: 'email', startTime: '09:30', endTime: '10:00', date: '2026-04-21' }),
+      makeBlock({ id: 2, workType: 'meeting', startTime: '10:00', endTime: '11:00', date: '2026-04-21' }),
+    ];
+    const r = calcWorkTypeSummary(blocks, WORK_START, WORK_END, ['2026-04-21']);
+    expect(r.emailMinutes).toBe(30);
+    expect(r.meetingMinutes).toBe(60);
+    expect(r.emailInWindowMinutes).toBe(30);
+    expect(r.meetingInWindowMinutes).toBe(60);
+    expect(r.unutilizedMinutes).toBe(525 - 30 - 60);
+  });
+
+  it('email and meeting in-window minutes reduce unutilized', () => {
+    const blocks: CalendarBlock[] = [
+      makeBlock({ id: 1, workType: 'email', startTime: '09:30', endTime: '10:30', date: '2026-04-21' }),
+    ];
+    const r = calcWorkTypeSummary(blocks, WORK_START, WORK_END, ['2026-04-21']);
+    expect(r.emailInWindowMinutes).toBe(60);
+    expect(r.unutilizedMinutes).toBe(525 - 60);
+  });
+
+  it('all five in-window types plus unutilized equal totalWindowMinutes', () => {
+    const blocks: CalendarBlock[] = [
+      makeBlock({ id: 1, workType: 'deep', startTime: '09:30', endTime: '10:30', date: '2026-04-21' }),
+      makeBlock({ id: 2, workType: 'shallow', startTime: '10:30', endTime: '11:00', date: '2026-04-21' }),
+      makeBlock({ id: 3, workType: 'active_break', startTime: '13:00', endTime: '13:30', date: '2026-04-21' }),
+      makeBlock({ id: 4, workType: 'email', startTime: '14:00', endTime: '14:30', date: '2026-04-21' }),
+      makeBlock({ id: 5, workType: 'meeting', startTime: '15:00', endTime: '16:00', date: '2026-04-21' }),
+    ];
+    const r = calcWorkTypeSummary(blocks, WORK_START, WORK_END, ['2026-04-21']);
+    const allInWindow = r.deepInWindowMinutes + r.shallowInWindowMinutes + r.breakInWindowMinutes + r.emailInWindowMinutes + r.meetingInWindowMinutes;
+    expect(allInWindow + r.unutilizedMinutes).toBe(r.totalWindowMinutes);
   });
 });
 

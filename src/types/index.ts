@@ -1,4 +1,4 @@
-export type WorkType = 'deep' | 'shallow' | 'active_break';
+export type WorkType = 'deep' | 'shallow' | 'active_break' | 'email' | 'meeting';
 export type TaskFlag = 'urgent' | 'important';
 export type TaskStatus = 'normal' | 'currently_working' | 'morning_meeting';
 export type Theme = 'light' | 'dark';
