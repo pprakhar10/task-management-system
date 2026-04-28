@@ -1,6 +1,6 @@
 import { useMemo, useRef, useEffect, useState } from 'react';
 import type { Task, Subtask, Project, Category } from '../types';
-import type { SearchFilters, CompletedFilter } from '../utils/search';
+import type { SearchFilters, CompletedFilter, DueFilter } from '../utils/search';
 import { DEFAULT_FILTERS, filterTasks } from '../utils/search';
 import { TaskCard } from '../components/tasks/TaskCard';
 
@@ -59,7 +59,8 @@ export function SearchView({
     filters.categoryId !== null ||
     filters.projectId !== null ||
     filters.workType !== null ||
-    filters.flag !== null;
+    filters.flag !== null ||
+    filters.dueFilter !== 'all';
 
   function setFilter<K extends keyof SearchFilters>(key: K, value: SearchFilters[K]) {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -158,6 +159,21 @@ export function SearchView({
                 className={`${BTN_BASE} ${filters.flag === f ? BTN_ON : BTN_OFF}`}
               >
                 {f === 'none' ? 'No flag' : f.charAt(0).toUpperCase() + f.slice(1)}
+              </button>
+            ))}
+          </div>
+
+          {/* Due date */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={LABEL_CLASS}>Due date</span>
+            {(['all', 'past_due', 'today', 'later'] as DueFilter[]).map(opt => (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => setFilter('dueFilter', opt)}
+                className={`${BTN_BASE} ${filters.dueFilter === opt ? BTN_ON : BTN_OFF}`}
+              >
+                {opt === 'all' ? 'All' : opt === 'past_due' ? 'Past due' : opt === 'today' ? 'Due today' : 'Due later'}
               </button>
             ))}
           </div>

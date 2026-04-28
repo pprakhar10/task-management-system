@@ -43,6 +43,7 @@ const DEFAULT: SearchFilters = {
   projectId: null,
   workType: null,
   flag: null,
+  dueFilter: 'all',
 };
 
 describe('filterTasks', () => {
@@ -170,5 +171,47 @@ describe('filterTasks', () => {
     });
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe(1);
+  });
+
+  describe('dueFilter', () => {
+    const TODAY = '2026-05-01';
+    const tasks = [
+      makeTask({ id: 1, dueDate: '2026-04-30' }), // past
+      makeTask({ id: 2, dueDate: '2026-05-01' }), // today
+      makeTask({ id: 3, dueDate: '2026-05-02' }), // later
+    ];
+
+    it('"all" returns every task', () => {
+      expect(filterTasks(tasks, projects, { ...DEFAULT, dueFilter: 'all' }, TODAY)).toHaveLength(3);
+    });
+
+    it('"past_due" returns only tasks with dueDate before today', () => {
+      const result = filterTasks(tasks, projects, { ...DEFAULT, dueFilter: 'past_due' }, TODAY);
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe(1);
+    });
+
+    it('"today" returns only tasks due today', () => {
+      const result = filterTasks(tasks, projects, { ...DEFAULT, dueFilter: 'today' }, TODAY);
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe(2);
+    });
+
+    it('"later" returns only tasks with dueDate after today', () => {
+      const result = filterTasks(tasks, projects, { ...DEFAULT, dueFilter: 'later' }, TODAY);
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe(3);
+    });
+
+    it('dueFilter combines with other filters', () => {
+      const mixed = [
+        makeTask({ id: 1, dueDate: '2026-04-30', workType: 'deep' }),
+        makeTask({ id: 2, dueDate: '2026-04-30', workType: 'shallow' }),
+        makeTask({ id: 3, dueDate: '2026-05-02', workType: 'deep' }),
+      ];
+      const result = filterTasks(mixed, projects, { ...DEFAULT, dueFilter: 'past_due', workType: 'deep' }, TODAY);
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe(1);
+    });
   });
 });
