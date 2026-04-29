@@ -26,6 +26,11 @@ function toYMD(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+function currentDayRange(): { startDate: string; endDate: string } {
+  const today = toYMD(new Date());
+  return { startDate: today, endDate: today };
+}
+
 function currentWeekRange(): { startDate: string; endDate: string } {
   const today = new Date();
   const dow = today.getDay();
@@ -309,11 +314,11 @@ interface Props {
   categories: Category[];
 }
 
-type Period = 'week' | 'month' | 'custom';
+type Period = 'today' | 'week' | 'month' | 'custom';
 
 export function StatisticsView({ allTasks, projects, categories }: Props) {
   const [activeTab, setActiveTab] = useState<'summary' | 'gantt'>('summary');
-  const [period, setPeriod] = useState<Period>('week');
+  const [period, setPeriod] = useState<Period>('today');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
   const [ganttPeriod, setGanttPeriod] = useState<GanttPeriod>('month');
@@ -326,6 +331,7 @@ export function StatisticsView({ allTasks, projects, categories }: Props) {
   }, [ganttPeriod, ganttOffset]);
 
   const dateRange = useMemo(() => {
+    if (period === 'today') return currentDayRange();
     if (period === 'week') return currentWeekRange();
     if (period === 'month') return currentMonthRange();
     if (customStart && customEnd && customStart <= customEnd) {
@@ -425,7 +431,7 @@ export function StatisticsView({ allTasks, projects, categories }: Props) {
             {/* Period filter */}
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                {(['week', 'month', 'custom'] as Period[]).map(p => (
+                {(['today', 'week', 'month', 'custom'] as Period[]).map(p => (
                   <button
                     key={p}
                     onClick={() => setPeriod(p)}
@@ -435,7 +441,7 @@ export function StatisticsView({ allTasks, projects, categories }: Props) {
                         : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
                     }`}
                   >
-                    {p === 'week' ? 'This Week' : p === 'month' ? 'This Month' : 'Custom'}
+                    {p === 'today' ? 'Today' : p === 'week' ? 'This Week' : p === 'month' ? 'This Month' : 'Custom'}
                   </button>
                 ))}
               </div>
