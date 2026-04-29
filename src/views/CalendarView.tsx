@@ -408,6 +408,11 @@ export function CalendarView({ categories, projects, tasks, allTasks, onCreateTa
   const workEnd = settings?.workDayEnd ?? WORK_END_DEFAULT;
   const breakTopY = timeToY(breakStart);
   const breakHeight = timeToY(breakEnd) - breakTopY;
+  const standupStart = settings?.standupStart ?? null;
+  const standupEnd = settings?.standupEnd ?? null;
+  const standupBand = standupStart && standupEnd
+    ? { top: GRID_TOP_PADDING + timeToY(standupStart), height: timeToY(standupEnd) - timeToY(standupStart) }
+    : null;
 
   const days = getWeekDays(weekOffset);
   const today = formatLocalDate(new Date());
@@ -716,6 +721,14 @@ export function CalendarView({ categories, projects, tasks, allTasks, onCreateTa
                     className="absolute left-0 right-0 bg-amber-50 dark:bg-amber-700/20 pointer-events-none"
                     style={{ top: GRID_TOP_PADDING + breakTopY, height: breakHeight }}
                   />
+
+                  {/* Morning meeting band */}
+                  {standupBand && (
+                    <div
+                      className="absolute left-0 right-0 bg-amber-50 dark:bg-amber-700/20 pointer-events-none"
+                      style={{ top: standupBand.top, height: standupBand.height }}
+                    />
+                  )}
 
                   {/* Clickable 15-min slots */}
                   {Array.from({ length: TOTAL_SLOTS }, (_, slot) => (
