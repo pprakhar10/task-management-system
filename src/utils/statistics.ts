@@ -164,16 +164,22 @@ export function calcCategoryBreakdown(
   );
 
   for (const block of blocks) {
-    if (block.taskId === null) continue;
-    const task = taskMap.get(block.taskId);
-    if (!task) continue;
-    const project = projectMap.get(task.projectId);
+    let project: Project | undefined;
+    if (block.taskId !== null) {
+      const task = taskMap.get(block.taskId);
+      if (!task) continue;
+      project = projectMap.get(task.projectId);
+    } else if (block.projectId !== null && (block.workType === 'email' || block.workType === 'meeting')) {
+      project = projectMap.get(block.projectId);
+    } else {
+      continue;
+    }
     if (!project) continue;
     const row = rows.get(project.categoryId);
     if (!row) continue;
     const dur = blockDurationMinutes(block.startTime, block.endTime);
     if (block.workType === 'deep') row.deepMinutes += dur;
-    else if (block.workType === 'shallow') row.shallowMinutes += dur;
+    else row.shallowMinutes += dur; // shallow, email, meeting all count as shallow
     row.totalMinutes += dur;
   }
 
@@ -203,10 +209,16 @@ export function calcProjectBreakdown(
   const rows = new Map<number, ProjectRow>();
 
   for (const block of blocks) {
-    if (block.taskId === null) continue;
-    const task = taskMap.get(block.taskId);
-    if (!task) continue;
-    const project = projectMap.get(task.projectId);
+    let project: Project | undefined;
+    if (block.taskId !== null) {
+      const task = taskMap.get(block.taskId);
+      if (!task) continue;
+      project = projectMap.get(task.projectId);
+    } else if (block.projectId !== null && (block.workType === 'email' || block.workType === 'meeting')) {
+      project = projectMap.get(block.projectId);
+    } else {
+      continue;
+    }
     if (!project) continue;
 
     if (!rows.has(project.id)) {
@@ -222,7 +234,7 @@ export function calcProjectBreakdown(
     const row = rows.get(project.id)!;
     const dur = blockDurationMinutes(block.startTime, block.endTime);
     if (block.workType === 'deep') row.deepMinutes += dur;
-    else if (block.workType === 'shallow') row.shallowMinutes += dur;
+    else row.shallowMinutes += dur; // shallow, email, meeting all count as shallow
     row.totalMinutes += dur;
   }
 

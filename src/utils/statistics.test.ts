@@ -15,6 +15,7 @@ import type { CalendarBlock, Category, Project, Task } from '../types';
 function makeBlock(overrides: Partial<CalendarBlock> & { id: number }): CalendarBlock {
   return {
     taskId: null,
+    projectId: null,
     workType: 'active_break',
     date: '2026-04-21',
     startTime: '09:00',
@@ -296,7 +297,7 @@ const TASKS: Task[] = [
 ];
 
 describe('calcCategoryBreakdown', () => {
-  it('groups blocks by category and excludes active_break (null taskId)', () => {
+  it('groups blocks by category and excludes active_break (null taskId, null projectId)', () => {
     const blocks: CalendarBlock[] = [
       makeBlock({ id: 1, taskId: 1, workType: 'deep', startTime: '10:00', endTime: '11:00' }),
       makeBlock({ id: 2, taskId: null, workType: 'active_break', startTime: '13:00', endTime: '14:15' }),
@@ -319,6 +320,47 @@ describe('calcCategoryBreakdown', () => {
     expect(rows[1].name).toBe('Design');
     expect(rows[1].shallowMinutes).toBe(30);
   });
+
+  it('includes email blocks with projectId as shallow minutes', () => {
+    const blocks: CalendarBlock[] = [
+      makeBlock({ id: 1, taskId: null, projectId: 1, workType: 'email', startTime: '09:30', endTime: '10:00' }), // 30 min → Engineering (proj 1)
+    ];
+    const rows = calcCategoryBreakdown(blocks, TASKS, PROJECTS, CATS);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].name).toBe('Engineering');
+    expect(rows[0].shallowMinutes).toBe(30);
+    expect(rows[0].totalMinutes).toBe(30);
+  });
+
+  it('includes meeting blocks with projectId as shallow minutes', () => {
+    const blocks: CalendarBlock[] = [
+      makeBlock({ id: 1, taskId: null, projectId: 2, workType: 'meeting', startTime: '10:00', endTime: '11:00' }), // 60 min → Design (proj 2)
+    ];
+    const rows = calcCategoryBreakdown(blocks, TASKS, PROJECTS, CATS);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].name).toBe('Design');
+    expect(rows[0].shallowMinutes).toBe(60);
+  });
+
+  it('excludes email/meeting blocks with null projectId', () => {
+    const blocks: CalendarBlock[] = [
+      makeBlock({ id: 1, taskId: null, projectId: null, workType: 'email', startTime: '09:30', endTime: '10:00' }),
+    ];
+    const rows = calcCategoryBreakdown(blocks, TASKS, PROJECTS, CATS);
+    expect(rows).toHaveLength(0);
+  });
+
+  it('mixes task blocks and email/meeting project blocks in same category', () => {
+    const blocks: CalendarBlock[] = [
+      makeBlock({ id: 1, taskId: 1, workType: 'deep', startTime: '09:00', endTime: '10:00' }),    // 60 deep Engineering
+      makeBlock({ id: 2, taskId: null, projectId: 1, workType: 'email', startTime: '10:00', endTime: '10:30' }), // 30 shallow Engineering
+    ];
+    const rows = calcCategoryBreakdown(blocks, TASKS, PROJECTS, CATS);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].deepMinutes).toBe(60);
+    expect(rows[0].shallowMinutes).toBe(30);
+    expect(rows[0].totalMinutes).toBe(90);
+  });
 });
 
 // ─── calcProjectBreakdown ───────────────────────────────────────────────────
@@ -335,12 +377,53 @@ describe('calcProjectBreakdown', () => {
     expect(rows[0].deepMinutes).toBe(60);
   });
 
-  it('excludes active_break blocks (null taskId)', () => {
+  it('excludes active_break blocks (null taskId, null projectId)', () => {
     const blocks: CalendarBlock[] = [
       makeBlock({ id: 1, taskId: null, workType: 'active_break', startTime: '13:00', endTime: '14:15' }),
     ];
     const rows = calcProjectBreakdown(blocks, TASKS, PROJECTS, CATS);
     expect(rows).toHaveLength(0);
+  });
+
+  it('includes email blocks with projectId as shallow minutes', () => {
+    const blocks: CalendarBlock[] = [
+      makeBlock({ id: 1, taskId: null, projectId: 1, workType: 'email', startTime: '09:30', endTime: '10:00' }), // 30 min → Frontend
+    ];
+    const rows = calcProjectBreakdown(blocks, TASKS, PROJECTS, CATS);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].name).toBe('Frontend');
+    expect(rows[0].shallowMinutes).toBe(30);
+    expect(rows[0].totalMinutes).toBe(30);
+  });
+
+  it('includes meeting blocks with projectId as shallow minutes', () => {
+    const blocks: CalendarBlock[] = [
+      makeBlock({ id: 1, taskId: null, projectId: 2, workType: 'meeting', startTime: '10:00', endTime: '11:30' }), // 90 min → UI
+    ];
+    const rows = calcProjectBreakdown(blocks, TASKS, PROJECTS, CATS);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].name).toBe('UI');
+    expect(rows[0].shallowMinutes).toBe(90);
+  });
+
+  it('excludes email/meeting blocks with null projectId', () => {
+    const blocks: CalendarBlock[] = [
+      makeBlock({ id: 1, taskId: null, projectId: null, workType: 'meeting', startTime: '10:00', endTime: '11:00' }),
+    ];
+    const rows = calcProjectBreakdown(blocks, TASKS, PROJECTS, CATS);
+    expect(rows).toHaveLength(0);
+  });
+
+  it('mixes task blocks and email/meeting project blocks for the same project', () => {
+    const blocks: CalendarBlock[] = [
+      makeBlock({ id: 1, taskId: 1, workType: 'deep', startTime: '09:00', endTime: '10:00' }),    // 60 deep → Frontend
+      makeBlock({ id: 2, taskId: null, projectId: 1, workType: 'meeting', startTime: '10:00', endTime: '10:30' }), // 30 shallow → Frontend
+    ];
+    const rows = calcProjectBreakdown(blocks, TASKS, PROJECTS, CATS);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].deepMinutes).toBe(60);
+    expect(rows[0].shallowMinutes).toBe(30);
+    expect(rows[0].totalMinutes).toBe(90);
   });
 });
 

@@ -48,6 +48,7 @@ export interface Subtask {
 export interface CalendarBlock {
   id: number;
   taskId: number | null;
+  projectId: number | null; // set for email/meeting blocks; null for task-linked and active_break
   workType: WorkType;
   date: string; // YYYY-MM-DD
   startTime: string; // HH:MM

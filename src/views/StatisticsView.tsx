@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/database';
 import type { Category, Project, Task } from '../types';
@@ -99,14 +99,16 @@ interface SummaryCardProps {
   pct: number;
   color: string;
   darkColor: string;
+  children?: ReactNode;
 }
 
-function SummaryCard({ label, minutes, pct, color, darkColor }: SummaryCardProps) {
+function SummaryCard({ label, minutes, pct, color, darkColor, children }: SummaryCardProps) {
   return (
     <div className={`rounded-xl p-4 ${color} ${darkColor}`}>
       <p className="text-xs font-medium opacity-70 uppercase tracking-wide">{label}</p>
       <p className="text-2xl font-bold mt-1">{minutesToDisplay(minutes)}</p>
       <p className="text-sm opacity-60 mt-0.5">{pct.toFixed(0)}% of work window</p>
+      {children}
     </div>
   );
 }
@@ -264,10 +266,8 @@ function StackedBar({ summary }: StackedBarProps) {
 
   const segments = [
     { value: d, label: 'Deep', cls: 'bg-indigo-500' },
-    { value: s, label: 'Shallow', cls: 'bg-emerald-500' },
+    { value: s + e + m, label: 'Shallow', cls: 'bg-emerald-500' }, // email + meeting merged into shallow
     { value: b, label: 'Break', cls: 'bg-amber-400' },
-    { value: e, label: 'Email', cls: 'bg-sky-400' },
-    { value: m, label: 'Meeting', cls: 'bg-rose-400' },
     { value: u, label: 'Unutilized', cls: 'bg-gray-200 dark:bg-gray-700' },
   ].filter(seg => seg.value > 0);
 
@@ -396,51 +396,8 @@ export function StatisticsView({ allTasks, projects, categories }: Props) {
   );
 
   const tw = summary.totalWindowMinutes;
-
-  const cards = [
-    {
-      label: 'Deep Work',
-      minutes: summary.deepMinutes,
-      pct: tw > 0 ? (summary.deepInWindowMinutes / tw) * 100 : 0,
-      color: 'bg-indigo-50 text-indigo-900',
-      darkColor: 'dark:bg-indigo-900/20 dark:text-indigo-100',
-    },
-    {
-      label: 'Shallow Work',
-      minutes: summary.shallowMinutes,
-      pct: tw > 0 ? (summary.shallowInWindowMinutes / tw) * 100 : 0,
-      color: 'bg-emerald-50 text-emerald-900',
-      darkColor: 'dark:bg-emerald-900/20 dark:text-emerald-100',
-    },
-    {
-      label: 'Active Break',
-      minutes: summary.breakMinutes,
-      pct: tw > 0 ? (summary.breakInWindowMinutes / tw) * 100 : 0,
-      color: 'bg-amber-50 text-amber-900',
-      darkColor: 'dark:bg-amber-900/20 dark:text-amber-100',
-    },
-    {
-      label: 'Email',
-      minutes: summary.emailMinutes,
-      pct: tw > 0 ? (summary.emailInWindowMinutes / tw) * 100 : 0,
-      color: 'bg-sky-50 text-sky-900',
-      darkColor: 'dark:bg-sky-900/20 dark:text-sky-100',
-    },
-    {
-      label: 'Meeting',
-      minutes: summary.meetingMinutes,
-      pct: tw > 0 ? (summary.meetingInWindowMinutes / tw) * 100 : 0,
-      color: 'bg-rose-50 text-rose-900',
-      darkColor: 'dark:bg-rose-900/20 dark:text-rose-100',
-    },
-    {
-      label: 'Unutilized',
-      minutes: summary.unutilizedMinutes,
-      pct: tw > 0 ? (summary.unutilizedMinutes / tw) * 100 : 0,
-      color: 'bg-gray-100 text-gray-700',
-      darkColor: 'dark:bg-gray-800 dark:text-gray-300',
-    },
-  ];
+  const shallowTotalMinutes = summary.shallowMinutes + summary.emailMinutes + summary.meetingMinutes;
+  const shallowInWindowTotal = summary.shallowInWindowMinutes + summary.emailInWindowMinutes + summary.meetingInWindowMinutes;
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -522,9 +479,48 @@ export function StatisticsView({ allTasks, projects, categories }: Props) {
               <>
                 {/* Summary cards */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {cards.map(c => (
-                    <SummaryCard key={c.label} {...c} />
-                  ))}
+                  <SummaryCard
+                    label="Deep Work"
+                    minutes={summary.deepMinutes}
+                    pct={tw > 0 ? (summary.deepInWindowMinutes / tw) * 100 : 0}
+                    color="bg-indigo-50 text-indigo-900"
+                    darkColor="dark:bg-indigo-900/20 dark:text-indigo-100"
+                  />
+                  <SummaryCard
+                    label="Shallow Work"
+                    minutes={shallowTotalMinutes}
+                    pct={tw > 0 ? (shallowInWindowTotal / tw) * 100 : 0}
+                    color="bg-emerald-50 text-emerald-900"
+                    darkColor="dark:bg-emerald-900/20 dark:text-emerald-100"
+                  >
+                    {(summary.emailMinutes > 0 || summary.meetingMinutes > 0) && (
+                      <div className="mt-2 pt-2 border-t border-emerald-200 dark:border-emerald-700/40 flex flex-wrap gap-x-3 gap-y-0.5">
+                        {summary.shallowMinutes > 0 && (
+                          <span className="text-xs opacity-60">Pure {minutesToDisplay(summary.shallowMinutes)}</span>
+                        )}
+                        {summary.emailMinutes > 0 && (
+                          <span className="text-xs opacity-60">Email {minutesToDisplay(summary.emailMinutes)}</span>
+                        )}
+                        {summary.meetingMinutes > 0 && (
+                          <span className="text-xs opacity-60">Mtg {minutesToDisplay(summary.meetingMinutes)}</span>
+                        )}
+                      </div>
+                    )}
+                  </SummaryCard>
+                  <SummaryCard
+                    label="Active Break"
+                    minutes={summary.breakMinutes}
+                    pct={tw > 0 ? (summary.breakInWindowMinutes / tw) * 100 : 0}
+                    color="bg-amber-50 text-amber-900"
+                    darkColor="dark:bg-amber-900/20 dark:text-amber-100"
+                  />
+                  <SummaryCard
+                    label="Unutilized"
+                    minutes={summary.unutilizedMinutes}
+                    pct={tw > 0 ? (summary.unutilizedMinutes / tw) * 100 : 0}
+                    color="bg-gray-100 text-gray-700"
+                    darkColor="dark:bg-gray-800 dark:text-gray-300"
+                  />
                 </div>
 
                 {/* Stacked distribution bar */}

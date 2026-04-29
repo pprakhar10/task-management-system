@@ -354,16 +354,16 @@ describe('Subtask CRUD', () => {
 
 describe('CalendarBlock CRUD', () => {
   it('creates a block and retrieves it', async () => {
-    const block = await createCalendarBlock({ taskId: null, workType: 'active_break', date: '2026-05-01', startTime: '13:00', endTime: '14:15' });
+    const block = await createCalendarBlock({ taskId: null, projectId: null, workType: 'active_break', date: '2026-05-01', startTime: '13:00', endTime: '14:15' });
     expect(block.id).toBeDefined();
     expect(block.workType).toBe('active_break');
     expect(block.date).toBe('2026-05-01');
   });
 
   it('getCalendarBlocksByDate filters by date', async () => {
-    await createCalendarBlock({ taskId: null, workType: 'active_break', date: '2026-05-01', startTime: '13:00', endTime: '14:15' });
-    await createCalendarBlock({ taskId: null, workType: 'deep', date: '2026-05-01', startTime: '09:15', endTime: '11:00' });
-    await createCalendarBlock({ taskId: null, workType: 'deep', date: '2026-05-02', startTime: '09:15', endTime: '11:00' });
+    await createCalendarBlock({ taskId: null, projectId: null, workType: 'active_break', date: '2026-05-01', startTime: '13:00', endTime: '14:15' });
+    await createCalendarBlock({ taskId: null, projectId: null, workType: 'deep', date: '2026-05-01', startTime: '09:15', endTime: '11:00' });
+    await createCalendarBlock({ taskId: null, projectId: null, workType: 'deep', date: '2026-05-02', startTime: '09:15', endTime: '11:00' });
 
     const results = await getCalendarBlocksByDate('2026-05-01');
     expect(results).toHaveLength(2);
@@ -371,10 +371,10 @@ describe('CalendarBlock CRUD', () => {
   });
 
   it('getCalendarBlocksByDateRange returns blocks within range (inclusive)', async () => {
-    await createCalendarBlock({ taskId: null, workType: 'deep', date: '2026-05-01', startTime: '09:00', endTime: '10:00' });
-    await createCalendarBlock({ taskId: null, workType: 'deep', date: '2026-05-03', startTime: '09:00', endTime: '10:00' });
-    await createCalendarBlock({ taskId: null, workType: 'deep', date: '2026-05-05', startTime: '09:00', endTime: '10:00' });
-    await createCalendarBlock({ taskId: null, workType: 'deep', date: '2026-05-07', startTime: '09:00', endTime: '10:00' });
+    await createCalendarBlock({ taskId: null, projectId: null, workType: 'deep', date: '2026-05-01', startTime: '09:00', endTime: '10:00' });
+    await createCalendarBlock({ taskId: null, projectId: null, workType: 'deep', date: '2026-05-03', startTime: '09:00', endTime: '10:00' });
+    await createCalendarBlock({ taskId: null, projectId: null, workType: 'deep', date: '2026-05-05', startTime: '09:00', endTime: '10:00' });
+    await createCalendarBlock({ taskId: null, projectId: null, workType: 'deep', date: '2026-05-07', startTime: '09:00', endTime: '10:00' });
 
     const results = await getCalendarBlocksByDateRange('2026-05-03', '2026-05-05');
     expect(results).toHaveLength(2);
@@ -386,7 +386,7 @@ describe('CalendarBlock CRUD', () => {
   });
 
   it('updateCalendarBlock persists changes', async () => {
-    const block = await createCalendarBlock({ taskId: null, workType: 'deep', date: '2026-05-01', startTime: '09:00', endTime: '11:00' });
+    const block = await createCalendarBlock({ taskId: null, projectId: null, workType: 'deep', date: '2026-05-01', startTime: '09:00', endTime: '11:00' });
     await updateCalendarBlock(block.id, { endTime: '12:00', date: '2026-05-02' });
     const updated = await getCalendarBlockById(block.id);
     expect(updated?.endTime).toBe('12:00');
@@ -394,9 +394,28 @@ describe('CalendarBlock CRUD', () => {
   });
 
   it('deleteCalendarBlock removes the block', async () => {
-    const block = await createCalendarBlock({ taskId: null, workType: 'deep', date: '2026-05-01', startTime: '09:00', endTime: '11:00' });
+    const block = await createCalendarBlock({ taskId: null, projectId: null, workType: 'deep', date: '2026-05-01', startTime: '09:00', endTime: '11:00' });
     await deleteCalendarBlock(block.id);
     expect(await getCalendarBlockById(block.id)).toBeUndefined();
+  });
+
+  it('email block stores projectId and retrieves it', async () => {
+    const cat = await createCategory('Work');
+    const proj = await createProject(cat.id, 'Reporting');
+    const block = await createCalendarBlock({ taskId: null, projectId: proj.id, workType: 'email', date: '2026-05-01', startTime: '10:00', endTime: '10:30' });
+    const found = await getCalendarBlockById(block.id);
+    expect(found?.projectId).toBe(proj.id);
+    expect(found?.taskId).toBeNull();
+    expect(found?.workType).toBe('email');
+  });
+
+  it('meeting block stores projectId and retrieves it', async () => {
+    const cat = await createCategory('Work');
+    const proj = await createProject(cat.id, 'Planning');
+    const block = await createCalendarBlock({ taskId: null, projectId: proj.id, workType: 'meeting', date: '2026-05-02', startTime: '11:00', endTime: '12:00' });
+    const found = await getCalendarBlockById(block.id);
+    expect(found?.projectId).toBe(proj.id);
+    expect(found?.workType).toBe('meeting');
   });
 });
 

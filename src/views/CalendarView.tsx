@@ -35,8 +35,10 @@ const BLOCK_COLORS: Record<WorkType, string> = {
   meeting: 'bg-rose-400 border-l-2 border-rose-600 text-white',
 };
 
-// Work types that have no task association — task selector is hidden for these
-const NO_TASK_WORK_TYPES = new Set<WorkType>(['active_break', 'email', 'meeting']);
+// No category/project/task association
+const NO_ASSOC_WORK_TYPES = new Set<WorkType>(['active_break']);
+// Category + project association only — no task
+const PROJECT_ONLY_WORK_TYPES = new Set<WorkType>(['email', 'meeting']);
 
 // Active-state button colour for each no-task type in the dialog
 const SPECIAL_TYPE_BTN_ACTIVE: Record<string, string> = {
@@ -181,13 +183,27 @@ function BlockDialog({
         projectId: firstProj?.id ?? null,
         taskId: firstTask?.id ?? null,
       });
-    } else {
+    } else if (wt === 'active_break') {
       onChange({ workType: wt, categoryId: null, projectId: null, taskId: null });
+    } else {
+      // email or meeting — initialise with first available category + project, no task
+      const firstCat = categories[0];
+      const firstProj = firstCat ? projects.find(p => p.categoryId === firstCat.id) : null;
+      onChange({
+        workType: wt,
+        categoryId: firstCat?.id ?? null,
+        projectId: firstProj?.id ?? null,
+        taskId: null,
+      });
     }
   }
 
   function handleCategoryChange(catId: number) {
     const firstProj = projects.find(p => p.categoryId === catId);
+    if (PROJECT_ONLY_WORK_TYPES.has(state.workType)) {
+      onChange({ categoryId: catId, projectId: firstProj?.id ?? null, taskId: null });
+      return;
+    }
     const firstTask = firstProj ? tasks.find(t => t.projectId === firstProj.id) : null;
     onChange({
       categoryId: catId,
@@ -198,6 +214,10 @@ function BlockDialog({
   }
 
   function handleProjectChange(projId: number) {
+    if (PROJECT_ONLY_WORK_TYPES.has(state.workType)) {
+      onChange({ projectId: projId, taskId: null });
+      return;
+    }
     const firstTask = tasks.find(t => t.projectId === projId);
     onChange({
       projectId: projId,
@@ -245,8 +265,8 @@ function BlockDialog({
             ))}
           </div>
 
-          {/* Task selectors — hidden for non-task work types */}
-          {!NO_TASK_WORK_TYPES.has(state.workType) && (
+          {/* Category + Project selectors — shown for email/meeting and task-linked types */}
+          {!NO_ASSOC_WORK_TYPES.has(state.workType) && (
             <>
               {/* Category */}
               {categories.length > 0 && (
@@ -284,8 +304,8 @@ function BlockDialog({
                 </div>
               )}
 
-              {/* Task */}
-              {state.projectId !== null && (
+              {/* Task — only for task-linked types (deep/shallow), not email/meeting */}
+              {!PROJECT_ONLY_WORK_TYPES.has(state.workType) && state.projectId !== null && (
                 <div>
                   <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Task</p>
                   {filteredTasks.length > 0 ? (
@@ -479,8 +499,14 @@ export function CalendarView({ categories, projects, tasks, allTasks, onCreateTa
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   function getBlockLabel(block: CalendarBlock): string {
-    if (block.taskId == null) return WORK_TYPE_LABELS[block.workType];
-    return taskMap.get(block.taskId)?.title ?? 'Unknown Task';
+    if (block.taskId != null) return taskMap.get(block.taskId)?.title ?? 'Unknown Task';
+    if (block.projectId != null && PROJECT_ONLY_WORK_TYPES.has(block.workType)) {
+      const projName = projectMap.get(block.projectId)?.name;
+      return projName
+        ? `${WORK_TYPE_LABELS[block.workType]} [${projName}]`
+        : WORK_TYPE_LABELS[block.workType];
+    }
+    return WORK_TYPE_LABELS[block.workType];
   }
 
   // ── Dialog actions ────────────────────────────────────────────────────────
@@ -505,7 +531,11 @@ export function CalendarView({ categories, projects, tasks, allTasks, onCreateTa
 
   function openEdit(block: CalendarBlock) {
     const task = block.taskId != null ? taskMap.get(block.taskId) : null;
-    const proj = task ? projectMap.get(task.projectId) : null;
+    const proj = task
+      ? projectMap.get(task.projectId)
+      : block.projectId != null
+      ? projectMap.get(block.projectId)
+      : null;
     const cat = proj ? categories.find(c => c.id === proj.categoryId) : null;
     setDialog({
       mode: 'edit',
@@ -533,8 +563,10 @@ export function CalendarView({ categories, projects, tasks, allTasks, onCreateTa
       setDialogError(`Overlaps with existing block (${conflict.startTime}–${conflict.endTime})`);
       return;
     }
+    const isProjectOnly = PROJECT_ONLY_WORK_TYPES.has(dialog.workType);
     const blockData = {
-      taskId: NO_TASK_WORK_TYPES.has(dialog.workType) ? null : (dialog.taskId ?? null),
+      taskId: isProjectOnly || NO_ASSOC_WORK_TYPES.has(dialog.workType) ? null : (dialog.taskId ?? null),
+      projectId: isProjectOnly ? (dialog.projectId ?? null) : null,
       workType: dialog.workType,
       date: dialog.date,
       startTime: dialog.startTime,
