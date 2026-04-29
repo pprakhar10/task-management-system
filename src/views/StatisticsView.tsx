@@ -49,6 +49,48 @@ function formatDateLabel(dateStr: string): string {
   return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
+// ─── Gantt period types + helpers ─────────────────────────────────────────────
+
+type GanttPeriod = 'week' | 'month' | 'fy';
+
+const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function ganttWeekRange(offset: number): { startDate: string; endDate: string; label: string } {
+  const today = new Date();
+  const dow = today.getDay();
+  const daysFromMon = dow === 0 ? -6 : 1 - dow;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + daysFromMon + offset * 7);
+  const friday = new Date(monday);
+  friday.setDate(monday.getDate() + 4);
+  const mDay = monday.getDate();
+  const mMon = MONTH_ABBR[monday.getMonth()];
+  const fDay = friday.getDate();
+  const fMon = MONTH_ABBR[friday.getMonth()];
+  const year = friday.getFullYear();
+  const label = monday.getMonth() === friday.getMonth()
+    ? `${mDay}–${fDay} ${fMon} ${year}`
+    : `${mDay} ${mMon} – ${fDay} ${fMon} ${year}`;
+  return { startDate: toYMD(monday), endDate: toYMD(friday), label };
+}
+
+function ganttMonthRange(offset: number): { startDate: string; endDate: string; label: string } {
+  const today = new Date();
+  const start = new Date(today.getFullYear(), today.getMonth() + offset, 1);
+  const end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
+  const label = `${MONTH_ABBR[start.getMonth()]} ${start.getFullYear()}`;
+  return { startDate: toYMD(start), endDate: toYMD(end), label };
+}
+
+function ganttFyRange(offset: number): { startDate: string; endDate: string; label: string } {
+  const today = new Date();
+  const fyStartYear = (today.getMonth() >= 3 ? today.getFullYear() : today.getFullYear() - 1) + offset;
+  const start = new Date(fyStartYear, 3, 1);       // April 1
+  const end = new Date(fyStartYear + 1, 2, 31);    // March 31
+  const label = `FY ${fyStartYear}–${String(fyStartYear + 1).slice(2)}`;
+  return { startDate: toYMD(start), endDate: toYMD(end), label };
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 interface SummaryCardProps {
@@ -274,17 +316,14 @@ export function StatisticsView({ allTasks, projects, categories }: Props) {
   const [period, setPeriod] = useState<Period>('week');
   const [customStart, setCustomStart] = useState('');
   const [customEnd, setCustomEnd] = useState('');
-  const [ganttPeriod, setGanttPeriod] = useState<'month' | 'custom'>('month');
-  const [ganttCustomStart, setGanttCustomStart] = useState('');
-  const [ganttCustomEnd, setGanttCustomEnd] = useState('');
+  const [ganttPeriod, setGanttPeriod] = useState<GanttPeriod>('month');
+  const [ganttOffset, setGanttOffset] = useState(0);
 
   const ganttDateRange = useMemo(() => {
-    if (ganttPeriod === 'month') return currentMonthRange();
-    if (ganttCustomStart && ganttCustomEnd && ganttCustomStart <= ganttCustomEnd) {
-      return { startDate: ganttCustomStart, endDate: ganttCustomEnd };
-    }
-    return null;
-  }, [ganttPeriod, ganttCustomStart, ganttCustomEnd]);
+    if (ganttPeriod === 'week') return ganttWeekRange(ganttOffset);
+    if (ganttPeriod === 'month') return ganttMonthRange(ganttOffset);
+    return ganttFyRange(ganttOffset);
+  }, [ganttPeriod, ganttOffset]);
 
   const dateRange = useMemo(() => {
     if (period === 'week') return currentWeekRange();
@@ -514,64 +553,69 @@ export function StatisticsView({ allTasks, projects, categories }: Props) {
 
         {activeTab === 'gantt' && (
           <>
-            {/* Gantt period filter */}
+            {/* Gantt period selector + navigation */}
             <div className="flex flex-wrap items-center gap-3">
+              {/* Period type */}
               <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                {(['month', 'custom'] as const).map(p => (
+                {(['week', 'month', 'fy'] as GanttPeriod[]).map(p => (
                   <button
                     key={p}
-                    onClick={() => setGanttPeriod(p)}
+                    onClick={() => { setGanttPeriod(p); setGanttOffset(0); }}
                     className={`min-h-[36px] px-4 text-sm font-medium transition-colors ${
                       ganttPeriod === p
                         ? 'bg-indigo-600 text-white'
                         : 'bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
                     }`}
                   >
-                    {p === 'month' ? 'This Month' : 'Custom'}
+                    {p === 'week' ? 'Week' : p === 'month' ? 'Month' : 'Financial Year'}
                   </button>
                 ))}
               </div>
 
-              {ganttPeriod === 'custom' && (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="date"
-                    value={ganttCustomStart}
-                    onChange={e => setGanttCustomStart(e.target.value)}
-                    className="min-h-[36px] px-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100"
-                  />
-                  <span className="text-gray-400 text-sm">to</span>
-                  <input
-                    type="date"
-                    value={ganttCustomEnd}
-                    onChange={e => setGanttCustomEnd(e.target.value)}
-                    className="min-h-[36px] px-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm text-gray-900 dark:text-gray-100"
-                  />
-                </div>
-              )}
-
-              {ganttDateRange && (
-                <span className="text-sm text-gray-500 dark:text-gray-400">
-                  {formatDateLabel(ganttDateRange.startDate)} – {formatDateLabel(ganttDateRange.endDate)}
+              {/* Prev / label / next */}
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setGanttOffset(o => o - 1)}
+                  className="min-h-[32px] min-w-[32px] flex items-center justify-center rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  aria-label="Previous period"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300 min-w-[160px] text-center tabular-nums">
+                  {ganttDateRange.label}
                 </span>
+                <button
+                  onClick={() => setGanttOffset(o => o + 1)}
+                  className="min-h-[32px] min-w-[32px] flex items-center justify-center rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  aria-label="Next period"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </div>
+
+              {ganttOffset !== 0 && (
+                <button
+                  onClick={() => setGanttOffset(0)}
+                  className="min-h-[32px] px-3 rounded-lg text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-800 transition-colors"
+                >
+                  Current
+                </button>
               )}
             </div>
 
-            {ganttPeriod === 'custom' && !ganttDateRange && (
-              <p className="text-sm text-amber-600 dark:text-amber-400">Select a start and end date to view the timeline.</p>
-            )}
-
-            {ganttDateRange && (
-              <Section title="Project Timeline">
-                <GanttChart
-                  tasks={allTasks}
-                  categories={categories}
-                  projects={projects}
-                  rangeStart={ganttDateRange.startDate}
-                  rangeEnd={ganttDateRange.endDate}
-                />
-              </Section>
-            )}
+            <Section title="Project Timeline">
+              <GanttChart
+                tasks={allTasks}
+                categories={categories}
+                projects={projects}
+                rangeStart={ganttDateRange.startDate}
+                rangeEnd={ganttDateRange.endDate}
+              />
+            </Section>
           </>
         )}
       </div>

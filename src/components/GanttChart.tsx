@@ -39,12 +39,42 @@ export function GanttChart({ tasks, categories, projects, rangeStart, rangeEnd }
   );
 
   const axisLabels = useMemo(() => {
+    // Week view: one label per day
+    if (totalDays <= 7) {
+      return Array.from({ length: totalDays }, (_, i) => {
+        const d = addDays(rangeStart, i);
+        const date = new Date(d + 'T12:00:00');
+        return {
+          label: date.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' }),
+          offset: (i / totalDays) * 100,
+        };
+      });
+    }
+    // Month view: one label every 7 days
+    if (totalDays <= 60) {
+      const labels: Array<{ label: string; offset: number }> = [];
+      for (let i = 0; i < totalDays; i += 7) {
+        labels.push({ label: formatAxisDate(addDays(rangeStart, i)), offset: (i / totalDays) * 100 });
+      }
+      return labels;
+    }
+    // FY / long view: one label per month at the 1st of each month
     const labels: Array<{ label: string; offset: number }> = [];
-    for (let i = 0; i < totalDays; i += 7) {
-      labels.push({ label: formatAxisDate(addDays(rangeStart, i)), offset: (i / totalDays) * 100 });
+    const endDate = new Date(rangeEnd + 'T12:00:00');
+    let cur = new Date(rangeStart + 'T12:00:00');
+    cur = new Date(cur.getFullYear(), cur.getMonth(), 1);
+    while (cur <= endDate) {
+      const d = toYMD(cur);
+      if (d >= rangeStart) {
+        labels.push({
+          label: cur.toLocaleDateString('en-GB', { month: 'short' }),
+          offset: dateToOffset(d, rangeStart, totalDays),
+        });
+      }
+      cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
     }
     return labels;
-  }, [rangeStart, totalDays]);
+  }, [rangeStart, rangeEnd, totalDays]);
 
   const todayOffset =
     todayStr >= rangeStart && todayStr <= rangeEnd
