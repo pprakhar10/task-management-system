@@ -15,11 +15,11 @@ export const MOCK_CATEGORIES: Category[] = [
 ];
 
 export const MOCK_PROJECTS: Project[] = [
-  { id: 1, categoryId: 1, name: 'BRSR Dashboard', sortOrder: 0, createdAt: NOW },
-  { id: 2, categoryId: 1, name: 'Tata Steel Benchmark', sortOrder: 1, createdAt: NOW },
-  { id: 3, categoryId: 2, name: 'Weekly Updates', sortOrder: 0, createdAt: NOW },
-  { id: 4, categoryId: 2, name: 'Board Presentations', sortOrder: 1, createdAt: NOW },
-  { id: 5, categoryId: 3, name: 'Documentation', sortOrder: 0, createdAt: NOW },
+  { id: 1, categoryId: 1, name: 'BRSR Dashboard', sortOrder: 0, isPrivate: false, createdAt: NOW },
+  { id: 2, categoryId: 1, name: 'Tata Steel Benchmark', sortOrder: 1, isPrivate: false, createdAt: NOW },
+  { id: 3, categoryId: 2, name: 'Weekly Updates', sortOrder: 0, isPrivate: false, createdAt: NOW },
+  { id: 4, categoryId: 2, name: 'Board Presentations', sortOrder: 1, isPrivate: false, createdAt: NOW },
+  { id: 5, categoryId: 3, name: 'Documentation', sortOrder: 0, isPrivate: false, createdAt: NOW },
 ];
 
 export const MOCK_TASKS: Task[] = [

@@ -52,7 +52,7 @@ export function groupTasksForReport(
 
   for (const task of tasks) {
     const project = projectMap.get(task.projectId);
-    if (!project) continue;
+    if (!project || project.isPrivate) continue;
     const category = categoryMap.get(project.categoryId);
     if (!category) continue;
 

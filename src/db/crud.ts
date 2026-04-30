@@ -55,7 +55,7 @@ export async function createProject(categoryId: number, name: string): Promise<P
   const siblings = await db.projects.where('categoryId').equals(categoryId).toArray();
   const maxOrder = siblings.length > 0 ? Math.max(...siblings.map(p => p.sortOrder ?? 0)) : -1;
   const sortOrder = maxOrder + 1;
-  const entity = { categoryId, name, sortOrder, createdAt: Date.now() };
+  const entity = { categoryId, name, sortOrder, isPrivate: false, createdAt: Date.now() };
   const id = await db.projects.add(entity as Project);
   return { ...entity, id: id as number };
 }
@@ -72,7 +72,7 @@ export async function getProjectById(id: number): Promise<Project | undefined> {
   return db.projects.get(id);
 }
 
-export async function updateProject(id: number, changes: Pick<Project, 'name'>): Promise<void> {
+export async function updateProject(id: number, changes: Partial<Pick<Project, 'name' | 'isPrivate'>>): Promise<void> {
   await db.projects.update(id, changes);
 }
 

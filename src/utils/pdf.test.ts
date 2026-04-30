@@ -8,8 +8,8 @@ function makeCategory(id: number, name: string): Category {
   return { id, name, sortOrder: 0, createdAt: 0 };
 }
 
-function makeProject(id: number, categoryId: number, name: string): Project {
-  return { id, categoryId, name, sortOrder: 0, createdAt: 0 };
+function makeProject(id: number, categoryId: number, name: string, isPrivate = false): Project {
+  return { id, categoryId, name, sortOrder: 0, isPrivate, createdAt: 0 };
 }
 
 function makeTask(id: number, projectId: number, overrides: Partial<Task> = {}): Task {
@@ -141,6 +141,41 @@ describe('groupTasksForReport', () => {
     const result = groupTasksForReport(tasks, [], projs, cats);
 
     expect(result[0].projects[0].tasks[0].dueDate).toBe('2026-05-01');
+  });
+
+  it('excludes tasks whose project is marked private', () => {
+    const cats = [makeCategory(1, 'Work')];
+    const projs = [makeProject(10, 1, 'Secret', true)];
+    const tasks = [makeTask(1, 10, { title: 'Hidden task' })];
+
+    const result = groupTasksForReport(tasks, [], projs, cats);
+
+    expect(result).toHaveLength(0);
+  });
+
+  it('includes tasks from non-private projects and excludes private ones', () => {
+    const cats = [makeCategory(1, 'Work')];
+    const projs = [makeProject(10, 1, 'Public'), makeProject(11, 1, 'Private', true)];
+    const tasks = [makeTask(1, 10, { title: 'Visible' }), makeTask(2, 11, { title: 'Hidden' })];
+
+    const result = groupTasksForReport(tasks, [], projs, cats);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].projects).toHaveLength(1);
+    expect(result[0].projects[0].projectName).toBe('Public');
+    expect(result[0].projects[0].tasks).toHaveLength(1);
+    expect(result[0].projects[0].tasks[0].title).toBe('Visible');
+  });
+
+  it('excludes entire category group when all its projects are private', () => {
+    const cats = [makeCategory(1, 'Work'), makeCategory(2, 'Other')];
+    const projs = [makeProject(10, 1, 'Private', true), makeProject(20, 2, 'Public')];
+    const tasks = [makeTask(1, 10), makeTask(2, 20)];
+
+    const result = groupTasksForReport(tasks, [], projs, cats);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].categoryName).toBe('Other');
   });
 });
 

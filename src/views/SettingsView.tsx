@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db/database';
-import { updateSettings, addLeaveDay, removeLeaveDay } from '../db/crud';
+import { updateSettings, addLeaveDay, removeLeaveDay, updateProject } from '../db/crud';
 import { exportDB, importDB } from '../db/backup';
 import type { Settings } from '../types';
 
@@ -77,6 +77,8 @@ function formatLeaveDate(dateStr: string): string {
 export function SettingsView() {
   const settings = useLiveQuery(() => db.settings.toCollection().first(), []);
   const leaveDays = useLiveQuery(() => db.leaveDays.orderBy('date').toArray(), []) ?? [];
+  const categories = useLiveQuery(() => db.categories.orderBy('sortOrder').toArray(), []) ?? [];
+  const projects = useLiveQuery(() => db.projects.orderBy('sortOrder').toArray(), []) ?? [];
   const [restoreError, setRestoreError] = useState<string | null>(null);
   const [newLeaveDate, setNewLeaveDate] = useState('');
   const [leaveDateError, setLeaveDateError] = useState<string | null>(null);
@@ -279,6 +281,54 @@ export function SettingsView() {
                   </li>
                 ))}
               </ul>
+            )}
+          </div>
+        </section>
+
+        {/* Report Privacy */}
+        <section className="space-y-3">
+          <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+            Report Privacy
+          </h2>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Projects marked private are excluded from the PDF report to manager.
+          </p>
+          <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+            {categories.length === 0 ? (
+              <p className="text-sm text-gray-400 dark:text-gray-500">No projects yet.</p>
+            ) : (
+              <div className="space-y-4">
+                {categories.map(cat => {
+                  const catProjects = projects.filter(p => p.categoryId === cat.id);
+                  if (catProjects.length === 0) return null;
+                  return (
+                    <div key={cat.id}>
+                      <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-1">
+                        {cat.name}
+                      </p>
+                      <ul className="divide-y divide-gray-100 dark:divide-gray-800">
+                        {catProjects.map(proj => (
+                          <li key={proj.id} className="flex items-center justify-between py-2">
+                            <span className={`text-sm ${proj.isPrivate ? 'text-gray-400 dark:text-gray-500 line-through' : 'text-gray-900 dark:text-gray-100'}`}>
+                              {proj.name}
+                            </span>
+                            <button
+                              onClick={() => updateProject(proj.id, { isPrivate: !proj.isPrivate })}
+                              className={`min-h-[30px] px-3 rounded-md text-xs font-medium border transition-colors ${
+                                proj.isPrivate
+                                  ? 'bg-orange-50 dark:bg-orange-900/20 border-orange-300 dark:border-orange-700 text-orange-700 dark:text-orange-400'
+                                  : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-orange-300 dark:hover:border-orange-700 hover:text-orange-700 dark:hover:text-orange-400'
+                              }`}
+                            >
+                              {proj.isPrivate ? 'Private' : 'Include'}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
         </section>

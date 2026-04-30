@@ -17,6 +17,7 @@ export interface Project {
   categoryId: number;
   name: string;
   sortOrder: number;
+  isPrivate: boolean;
   createdAt: number;
 }
 
