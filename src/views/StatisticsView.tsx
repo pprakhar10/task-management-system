@@ -101,18 +101,16 @@ function ganttFyRange(offset: number): { startDate: string; endDate: string; lab
 interface SummaryCardProps {
   label: string;
   minutes: number;
-  pct: number;
   color: string;
   darkColor: string;
   children?: ReactNode;
 }
 
-function SummaryCard({ label, minutes, pct, color, darkColor, children }: SummaryCardProps) {
+function SummaryCard({ label, minutes, color, darkColor, children }: SummaryCardProps) {
   return (
     <div className={`rounded-xl p-4 ${color} ${darkColor}`}>
       <p className="text-xs font-medium opacity-70 uppercase tracking-wide">{label}</p>
       <p className="text-2xl font-bold mt-1">{minutesToDisplay(minutes)}</p>
-      <p className="text-sm opacity-60 mt-0.5">{pct.toFixed(0)}% of work window</p>
       {children}
     </div>
   );
@@ -401,9 +399,7 @@ export function StatisticsView({ allTasks, projects, categories }: Props) {
     [blocks, allTasks, projects],
   );
 
-  const tw = summary.totalWindowMinutes;
   const shallowTotalMinutes = summary.shallowMinutes + summary.emailMinutes + summary.meetingMinutes;
-  const shallowInWindowTotal = summary.shallowInWindowMinutes + summary.emailInWindowMinutes + summary.meetingInWindowMinutes;
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -488,14 +484,12 @@ export function StatisticsView({ allTasks, projects, categories }: Props) {
                   <SummaryCard
                     label="Deep Work"
                     minutes={summary.deepMinutes}
-                    pct={tw > 0 ? (summary.deepInWindowMinutes / tw) * 100 : 0}
                     color="bg-indigo-50 text-indigo-900"
                     darkColor="dark:bg-indigo-900/20 dark:text-indigo-100"
                   />
                   <SummaryCard
                     label="Shallow Work"
                     minutes={shallowTotalMinutes}
-                    pct={tw > 0 ? (shallowInWindowTotal / tw) * 100 : 0}
                     color="bg-emerald-50 text-emerald-900"
                     darkColor="dark:bg-emerald-900/20 dark:text-emerald-100"
                   >
@@ -516,14 +510,12 @@ export function StatisticsView({ allTasks, projects, categories }: Props) {
                   <SummaryCard
                     label="Active Break"
                     minutes={summary.breakMinutes}
-                    pct={tw > 0 ? (summary.breakInWindowMinutes / tw) * 100 : 0}
                     color="bg-amber-50 text-amber-900"
                     darkColor="dark:bg-amber-900/20 dark:text-amber-100"
                   />
                   <SummaryCard
                     label="Unutilized"
                     minutes={summary.unutilizedMinutes}
-                    pct={tw > 0 ? (summary.unutilizedMinutes / tw) * 100 : 0}
                     color="bg-gray-100 text-gray-700"
                     darkColor="dark:bg-gray-800 dark:text-gray-300"
                   />
