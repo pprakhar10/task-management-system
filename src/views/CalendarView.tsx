@@ -728,6 +728,16 @@ export function CalendarView({ categories, projects, tasks, allTasks, onCreateTa
                       : ''
                   }`}
                 >
+                  {/* Non-work-hour shading */}
+                  <div
+                    className="absolute left-0 right-0 bg-gray-400/[0.07] dark:bg-gray-900/30 pointer-events-none"
+                    style={{ top: GRID_TOP_PADDING, height: timeToY(workStart) }}
+                  />
+                  <div
+                    className="absolute left-0 right-0 bg-gray-400/[0.07] dark:bg-gray-900/30 pointer-events-none"
+                    style={{ top: GRID_TOP_PADDING + timeToY(workEnd), height: TOTAL_HEIGHT - timeToY(workEnd) }}
+                  />
+
                   {/* Grid lines — hour / half-hour / 15-min tiers */}
                   {Array.from({ length: TOTAL_SLOTS }, (_, slot) => {
                     const minFromStart = slot * 15;
