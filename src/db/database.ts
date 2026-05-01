@@ -109,6 +109,20 @@ export class AppDatabase extends Dexie {
         if (p.isPrivate === undefined) p.isPrivate = false;
       }),
     );
+    this.version(8).stores({
+      categories: '++id, sortOrder',
+      projects: '++id, categoryId, sortOrder',
+      tasks: '++id, projectId, status, completed, dueDate',
+      subtasks: '++id, taskId, sortOrder',
+      calendarBlocks: '++id, date, taskId',
+      settings: '++id',
+      leaveDays: '++id, date',
+    }).upgrade(async tx => {
+      const taskIds = new Set((await tx.table('tasks').toArray()).map((t: Task) => t.id as number));
+      await tx.table('calendarBlocks').toCollection().filter(
+        (b: CalendarBlock) => b.taskId !== null && !taskIds.has(b.taskId),
+      ).delete();
+    });
     this.on('populate', () => {
       this.settings.add(DEFAULT_SETTINGS as Settings);
     });

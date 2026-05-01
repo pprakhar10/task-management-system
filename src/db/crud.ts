@@ -24,7 +24,7 @@ export async function updateCategory(id: number, changes: Pick<Category, 'name'>
 }
 
 export async function deleteCategory(id: number): Promise<void> {
-  await db.transaction('rw', db.categories, db.projects, db.tasks, db.subtasks, async () => {
+  await db.transaction('rw', [db.categories, db.projects, db.tasks, db.subtasks, db.calendarBlocks], async () => {
     const projects = await db.projects.where('categoryId').equals(id).toArray();
     const projectIds = projects.map(p => p.id as number);
     if (projectIds.length > 0) {
@@ -32,6 +32,7 @@ export async function deleteCategory(id: number): Promise<void> {
       const taskIds = tasks.map(t => t.id as number);
       if (taskIds.length > 0) {
         await db.subtasks.where('taskId').anyOf(taskIds).delete();
+        await db.calendarBlocks.where('taskId').anyOf(taskIds).delete();
       }
       await db.tasks.where('projectId').anyOf(projectIds).delete();
     }
@@ -77,11 +78,12 @@ export async function updateProject(id: number, changes: Partial<Pick<Project, '
 }
 
 export async function deleteProject(id: number): Promise<void> {
-  await db.transaction('rw', db.projects, db.tasks, db.subtasks, async () => {
+  await db.transaction('rw', db.projects, db.tasks, db.subtasks, db.calendarBlocks, async () => {
     const tasks = await db.tasks.where('projectId').equals(id).toArray();
     const taskIds = tasks.map(t => t.id as number);
     if (taskIds.length > 0) {
       await db.subtasks.where('taskId').anyOf(taskIds).delete();
+      await db.calendarBlocks.where('taskId').anyOf(taskIds).delete();
     }
     await db.tasks.where('projectId').equals(id).delete();
     await db.projects.delete(id);
@@ -135,8 +137,9 @@ export async function completeTask(id: number): Promise<void> {
 }
 
 export async function deleteTask(id: number): Promise<void> {
-  await db.transaction('rw', db.tasks, db.subtasks, async () => {
+  await db.transaction('rw', db.tasks, db.subtasks, db.calendarBlocks, async () => {
     await db.subtasks.where('taskId').equals(id).delete();
+    await db.calendarBlocks.where('taskId').equals(id).delete();
     await db.tasks.delete(id);
   });
 }
