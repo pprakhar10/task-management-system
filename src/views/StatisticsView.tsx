@@ -379,10 +379,12 @@ export function StatisticsView({ allTasks, projects, categories }: Props) {
     [dateRange, leaveDaySet],
   );
 
-  const summary = useMemo(
-    () => calcWorkTypeSummary(blocks, workDayStart, workDayEnd, weekdays, exclusions),
-    [blocks, workDayStart, workDayEnd, weekdays, exclusions],
-  );
+  const summary = useMemo(() => {
+    const now = new Date();
+    const nowYMD = toYMD(now);
+    const nowHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    return calcWorkTypeSummary(blocks, workDayStart, workDayEnd, weekdays, exclusions, nowYMD, nowHHMM);
+  }, [blocks, workDayStart, workDayEnd, weekdays, exclusions]);
 
   const categoryRows = useMemo(
     () => calcCategoryBreakdown(blocks, allTasks, projects, categories),

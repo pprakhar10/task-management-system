@@ -84,15 +84,30 @@ export function calcWorkTypeSummary(
   workDayEnd: string,
   weekdays: string[],
   exclusions: DailyExclusion[] = [],
+  nowYMD?: string,
+  nowHHMM?: string,
 ): WorkTypeSummary {
-  // Effective window per day = work day minus recurring excluded slots (standup, break, etc.)
-  const workDayMinutes = timeToMinutes(workDayEnd) - timeToMinutes(workDayStart);
-  const excludedPerDay = exclusions.reduce(
-    (sum, ex) => sum + workDayOverlapMinutes(ex.start, ex.end, workDayStart, workDayEnd),
-    0,
-  );
-  const effectiveDayMinutes = Math.max(0, workDayMinutes - excludedPerDay);
-  const totalWindowMinutes = effectiveDayMinutes * weekdays.length;
+  // For today: cap the window at current time. For future days: contribute 0 (haven't happened yet).
+  const effectiveWorkDayEnd = (date: string): string => {
+    if (nowYMD && nowHHMM) {
+      if (date > nowYMD) return workDayStart; // future day → 0-width window
+      if (date === nowYMD) return nowHHMM < workDayEnd ? nowHHMM : workDayEnd;
+    }
+    return workDayEnd;
+  };
+
+  // Total window: sum per day so today and future days can differ
+  let totalWindowMinutes = 0;
+  for (const day of weekdays) {
+    const dayEnd = effectiveWorkDayEnd(day);
+    if (dayEnd <= workDayStart) continue;
+    const dayMinutes = timeToMinutes(dayEnd) - timeToMinutes(workDayStart);
+    const excludedToday = exclusions.reduce(
+      (sum, ex) => sum + workDayOverlapMinutes(ex.start, ex.end, workDayStart, dayEnd),
+      0,
+    );
+    totalWindowMinutes += Math.max(0, dayMinutes - excludedToday);
+  }
 
   const weekdaySet = new Set(weekdays);
 
@@ -116,8 +131,9 @@ export function calcWorkTypeSummary(
     else if (block.workType === 'meeting') meetingMinutes += dur;
 
     if (weekdaySet.has(block.date)) {
-      // Effective overlap = work-day overlap minus any portion inside excluded slots
-      const workOverlap = workDayOverlapMinutes(block.startTime, block.endTime, workDayStart, workDayEnd);
+      // Use the time-aware end so future blocks on today (and all blocks on future days) contribute 0
+      const dayEnd = effectiveWorkDayEnd(block.date);
+      const workOverlap = workDayOverlapMinutes(block.startTime, block.endTime, workDayStart, dayEnd);
       const exOverlap = exclusions.reduce((sum, ex) => sum + exclusionOverlap(block.startTime, block.endTime, ex), 0);
       const effective = Math.max(0, workOverlap - exOverlap);
       if (block.workType === 'deep') deepInWindowMinutes += effective;
