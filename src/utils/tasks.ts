@@ -12,6 +12,30 @@ export const STATUS_ORDER: Record<string, number> = {
   normal: 2,
 };
 
+export type PrimarySort = 'urgent' | 'important' | 'dueDate';
+
+function importantFirstOrder(flag: Task['flag']): number {
+  if (flag === 'important') return 0;
+  if (flag === 'urgent') return 1;
+  return 2;
+}
+
+export function sortTasksByPriority(tasks: Task[], primary: PrimarySort): Task[] {
+  return [...tasks].sort((a, b) => {
+    if (primary === 'urgent') {
+      const diff = flagOrder(a.flag) - flagOrder(b.flag);
+      return diff !== 0 ? diff : a.dueDate.localeCompare(b.dueDate);
+    }
+    if (primary === 'important') {
+      const diff = importantFirstOrder(a.flag) - importantFirstOrder(b.flag);
+      return diff !== 0 ? diff : a.dueDate.localeCompare(b.dueDate);
+    }
+    // dueDate primary, tiebreak by flag
+    const diff = a.dueDate.localeCompare(b.dueDate);
+    return diff !== 0 ? diff : flagOrder(a.flag) - flagOrder(b.flag);
+  });
+}
+
 export function sortTasks(tasks: Task[], sortBy: SortBy): Task[] {
   return [...tasks].sort((a, b) => {
     if (sortBy === 'dueDate') return a.dueDate.localeCompare(b.dueDate);

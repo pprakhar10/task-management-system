@@ -161,15 +161,12 @@ export default function App() {
   }, [completedTasks, projects, selectedProjectId, selectedCategoryId]);
 
   const currentlyWorkingTasks = useMemo(
-    () => sortTasks(
-      tasks.filter(t => t.status === 'currently_working' || t.status === 'morning_meeting'),
-      'dueDate',
-    ),
+    () => tasks.filter(t => t.status === 'currently_working' || t.status === 'morning_meeting'),
     [tasks],
   );
 
   const morningMeetingTasks = useMemo(
-    () => sortTasks(tasks.filter(t => t.status === 'morning_meeting'), 'dueDate'),
+    () => tasks.filter(t => t.status === 'morning_meeting'),
     [tasks],
   );
 
